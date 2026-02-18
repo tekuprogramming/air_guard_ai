@@ -161,3 +161,74 @@ print("Target variable created: aqi_category_next")
 
 # deleting the last row
 df_clean = df_clean.iloc[:-1]
+
+# coding category signs
+label_encoder = LabelEncoder()
+df_clean ["weather_main_encoded"] = label_encoder.fit_transform(df_clean["weather_main"])
+
+# creating time signs
+df_clean ["hour_sin"] = np.sin(2 * np.pi * df_clean["hour"]/24)
+df_clean ["hour_cos"] = np.cos(2 * np.pi * df_clean["hour"]/24)
+df_clean ["day_sin"] = np.sin(2 * np.pi * df_clean["day_of_week"]/7)
+df_clean ["day_cos"] = np.cos(2 * np.pi * df_clean["day_of_week"]/7)
+
+# choosing features for models
+features = ["temperature", "humidity", "pressure", "clouds", "hour_sin", "hour_cos", "day_sin", "day_cos", "weather_main_encoded", "is_weekend", "pm25", "pm10"]
+x = df_clean[features]
+y = df_clean["aqi_category_next"]
+
+# separating train / test
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42, shuffle = False)
+
+# scaling
+scaler = StandardScaler()
+x_train_scaled = scaler.fit_transform(x_train)
+x_test_scaled = scaler.transform(x_test)
+print(f"Training data shape: {x_train_scaled.shape}")
+print(f"Testing data shape: {x_test_scaled.shape}")
+
+# teaching model
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
+import seaborn as sns
+
+# teaching random forest
+model = RandomForestClassifier(n_estimators = 100, max_depth = 10, random_state=42, n_jobs = -1)
+model.fit(x_train_scaled, y_train)
+
+# prediction
+y_pred = model.predict(x_test_scaled)
+
+# model grade
+print("Accuracy: ", accuracy_score(y_test, y_pred))
+print("\nClassification report:")
+print(classification_report(y_test, y_pred))
+
+# error matrix
+cn = confusion_matrix(y_test, y_pred, labels = model.classes_)
+plt.figure(figsize = (8,6))
+sns.heatmap(cn, annot=True, fmt="d", cmap="Blues", xticklabels = model.classes_, yticklabels = model.classes_)
+plt.title("Confusion matrix")
+plt.ylabel("True label")
+plt.xlabel("Predicted label")
+plt.show()
+
+# sign importance
+feature_importance = pd.DataFrame({"feature": features, "importance": model.feature_importances_}).sort_values("importance", ascending=False)
+plt.figure(figsize = (10,6))
+plt.barh(feature_importance["feature"], feature_importance["importance"])
+plt.xlabel("Importance")
+plt.title("Feature importance")
+plt.gca().invert_yaxis()
+plt.show()
+
+# saving model
+import joblib
+import pickle
+
+# saving model and scaler
+model_data = {"model": model, "scaler": scaler, "label_encoder": label_encoder, "features": features, "classes": model.classes_.tolist()}
+
+# saving to file
+with open("air_quality_model.pkl", "wb") as f:
+    pickle.dump(model_data, f)
