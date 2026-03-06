@@ -346,3 +346,97 @@ class AirQualityVisualizer:
                 colours = [COLORS.get(cat,"grey") for cat in cat_counts.index]
                 ax4.pie(cat_counts.values, labels = cat_counts.index, colors = colours, autopct='%1.1f%%')
                 ax4.set_title("category distribution")
+
+            # hourly statistics
+            ax5 = fig.add_subplot(gs[1,1])
+            historical_df["hour"] = pd.to_datetime(historical_df["timestamp"]).dt.hour
+            hourly_avg = historical_df.groupby("hour")["pm25"].mean()
+            ax5.plot(hourly_avg.index, hourly_avg.values, "o-", color = COLORS["pm25"])
+            ax5.set_title("average PM2.5 by hour")
+            ax5.set_xlabel("hour")
+            ax5.set_ylabel("PM2.5")
+            ax5.grid(True, alpha = 0.3)
+
+            # weather
+            ax6 = fig.add_subplot(gs[1,2])
+            weather_data = [current_data.get("temperature", 0), current_data.get("humidity", 0), current_data.get("wind_speed", 0), current_data.get("pressure", 1013) / 10]
+            weather_labels = ['temperature (°C)', 'humidity (%)', 'wind (m/s)', 'pressure (×10 hPa)']
+            ax6.bar(weather_labels, weather_data, color = ['#d62728', '#2ca02c', '#1f77b4', '#9467bd'])
+            ax6.set_title("weather conditions")
+            ax6.tick_params(axis = "x", rotation = 45)
+
+            # weekly statistics
+            ax7 = fig.add_subplot(gs[2,:])
+            historical_df["data"] = pd.to_datetime(historical_df["timestamp"]).dt.date
+            daily_avg = historical_df.groupby("data")["pm25", "pm10"].mean().tail(7)
+            x = range(len(daily_avg))
+            ax7.plot(x, daily_avg["pm25"].values, "o-", color = COLORS["pm25"], label = "PM2.5", linewidth = 2)
+            ax7.plot(x, daily_avg["pm10"].values, "s-", color=COLORS["pm10"], label="PM10", linewidth=2)
+            ax7.set_title("daily average for the last 7 days")
+            ax7.set_xlabel("day")
+            ax7.set_ylabel("concentration (μg/m³)")
+            ax7.set_xticks(x)
+            ax7.set_xticklabels([d.strftime("%d.%m") for d in daily_avg.index])
+            ax7.legend()
+            ax7.grid(True, alpha = 0.3)
+            plt.tight_layout()
+
+            # saving
+            filename = self.output_dir / f'dashboard_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
+            plt.savefig(filename, dpi=120, bbox_inches="tight")
+            plt.show()
+            return filename
+
+# quick graph for current data
+def plot_current(data):
+    vis = AirQualityVisualizer()
+    return vis.plot_current_metrics(data)
+
+# quick trend graph
+def plot_trend(df):
+    vis = AirQualityVisualizer()
+    return vis.plot_24h_trend(df)
+
+# quick weekly statistics
+def plot_weekly(df):
+    vis = AirQualityVisualizer()
+    return vis.plot_weekly_states(df)
+
+if __name__ == "__main__":
+    print("testing visualizer")
+
+    # creating test data
+    current = {'timestamp': datetime.now().isoformat(),
+        'pm25': 35.5,
+        'pm10': 48.2,
+        'no2': 42.1,
+        'temperature': 12.5,
+        'humidity': 78,
+        'wind_speed': 3.2,
+        'pressure': 1012,
+        'aqi_score': 85,
+        'aqi_category': 'moderate'}
+
+    # creating test dataframe
+    dates = pd.date_range(end = datetime.now(), periods = 48, freq="H")
+    historical = pd.DataFrame({
+        "timestamp": dates,
+        "pm25": np.random.lognormal(mean = 3.0, sigma = 0.5, size = 48),
+        "pm10": np.random.lognormal(mean = 3.5, sigma = 0.5, size = 48),
+        "temperature": np.random.normal(loc=12, scale=3, size = 48),
+        "humidity": np.random.normal(loc=70, scale=10, size = 48),
+        "aqi_category": np.random.choice(["good", "moderate", "unhealthy_sensitive"], size = 48)
+    })
+
+    # testing functions
+    vis = AirQualityVisualizer()
+    print("Creating a graph of current metrics")
+    vis.plot_current_metrics(current)
+    print("Creating a graph of 24h trend")
+    vis.plot_24h_trend(historical.tail(24))
+    print("Creating weekly statistics")
+    vis.plot_weekly_states(historical)
+    print("Creating a dashboard")
+    vis.create_dashboard(current,historical)
+    print(f"All files saved to folder: {vis.output_dir}")
+
