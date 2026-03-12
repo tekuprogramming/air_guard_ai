@@ -1,11 +1,8 @@
-import request
+import requests
 import pandas as pd
 import time
 from datetime import datetime
-import json
 import os
-
-from django.contrib.sites import requests
 
 
 class AirCollector:
@@ -112,5 +109,6 @@ if __name__ == "__main__":
     collector = AirCollector()
     collector.collect_and_save()
     
+
 
 
