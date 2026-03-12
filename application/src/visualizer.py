@@ -6,7 +6,6 @@ matplotlib.use('TkAgg')
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-import os
 from pathlib import Path
 
 # setting the style
@@ -439,4 +438,5 @@ if __name__ == "__main__":
     print("Creating a dashboard")
     vis.create_dashboard(current,historical)
     print(f"All files saved to folder: {vis.output_dir}")
+
 
