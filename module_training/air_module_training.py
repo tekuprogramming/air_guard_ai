@@ -4,16 +4,11 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
 import sys
-import pickle
-import json
 from datetime import datetime
 from pathlib import Path
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, f1_score
 
 # training model to predict air quality
 
@@ -227,8 +222,14 @@ import joblib
 import pickle
 
 # saving model and scaler
-model_data = {"model": model, "scaler": scaler, "label_encoder": label_encoder, "features": features, "classes": model.classes_.tolist()}
+model_data = {"model": model, "scaler": scaler, "label_encoder": label_encoder, "features": features, "classes": model.classes_.tolist(), "feature_importance": feature_importance.set_index("feature")["importance"].to_dict(),
+    "metadata": {
+        "training_date": datetime.now().isoformat(),
+        "accuracy": accuracy_score(y_test, y_pred),
+        "n_samples": len(x_train)}}
 
 # saving to file
-with open("air_quality_model.pkl", "wb") as f:
+with open(MODELS_PATH, "wb") as f:
     pickle.dump(model_data, f)
+print("Full model path:", MODELS_PATH)
+
