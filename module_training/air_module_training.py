@@ -5,15 +5,18 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
+import pickle
 from datetime import datetime
 from pathlib import Path
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, f1_score
 
 # training model to predict air quality
 
 # setting the looks
-plt.style.use('seaborn-v0_8_darkgrid')
+plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
 
 # setting the root folder of the project
@@ -21,18 +24,19 @@ CURRENT_DIR = Path(__file__).parent
 PROJECT_ROOT = CURRENT_DIR.parent
 
 # data paths
-DATA_PATH = CURRENT_DIR / 'historical_data.csv'
-MODELS_PATH = CURRENT_DIR / 'trained_model.pkl'
+DATA_PATH = PROJECT_ROOT / "data_collection" / 'historical_data.csv'
+MODEL_PATH = CURRENT_DIR / 'trained_model.pkl'
+COMPACT_MODEL_PATH = CURRENT_DIR / 'trained_model_compact.pkl'  # ДОБАВЛЕНО
 REPORT_PATH = CURRENT_DIR / 'training_report.txt'
-VIS_PATH = CURRENT_DIR / 'visualization.png'
+VIS_DIR = CURRENT_DIR / 'visualizations'
+VIS_DIR.mkdir(exist_ok=True)
 
-VIS_PATH.mkdir(exist_ok=True)
 print("=" * 80)
 print("TRAINING MODEL FOR PREDICTING AIR QUALITY IN PRAGUE")
 print("=" * 80)
 print(f"Date and time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 print(f"Data file: {DATA_PATH}")
-print(f"Model will be saved in: {MODELS_PATH}")
+print(f"Model will be saved in: {MODEL_PATH}")
 print("=" * 80)
 print("Loading data")
 print("-" * 40)
@@ -50,6 +54,32 @@ print(f"  - Size: {df.shape}")
 print(f"  - Columns: {len(df.columns)}")
 print(f"  - Records: {len(df)}")
 print(f"  - Period: {df['date'].min()} - {df['date'].max()}")
+
+if 'aqi_category' in df.columns:
+    unique_vals = df['aqi_category'].unique()
+    print(f"Unique aqi_category values: {unique_vals}")
+    
+    if all(val in ['Unknown', 'unknown', None] for val in unique_vals) or df['aqi_category'].isna().all():
+        print("\nEmpty aqi_category values were found. Filling in based on pm25...")
+
+        def calc_cat(pm25):
+            if pd.isna(pm25) or pm25 is None:
+                return "unknown"
+            elif pm25 <= 12:
+                return "good"
+            elif pm25 <= 35:
+                return "moderate"
+            elif pm25 <= 55:
+                return "unhealthy_sensitive"
+            elif pm25 <= 150:
+                return "unhealthy"
+            else:
+                return "hazardous"
+
+        df['aqi_category'] = df['pm25'].apply(calc_cat)
+        print(f" Filled in. Distribution:")
+        print(df['aqi_category'].value_counts())
+        print("-" * 40)
 
 # basic information
 print("\nFirst five records: ")
@@ -103,46 +133,46 @@ print(df_clean[numeric_cols].describe().round(2).to_string())
 
 # distribution visualization
 fig, axis = plt.subplots(2, 3, figsize=(15, 10))
-fig.suptitle("Distribution of key signs after cleaning", fontsize = 16)
+fig.suptitle("Distribution of key signs after cleaning", fontsize=16)
 
 # PM2.5
-axis[0,0].hist(df_clean["pm25"].dropna(), bins = 50, color = "skyblue", edgecolor = "black")
+axis[0,0].hist(df_clean["pm25"].dropna(), bins=50, color="skyblue", edgecolor="black")
 axis[0,0].set_title("PM2.5 distribution")
 axis[0,0].set_xlabel("PM2.5 (μg/m³)")
 axis[0,0].set_ylabel("Frequency")
 
 # PM10
-axis[0,1].hist(df_clean["pm10"].dropna(), bins = 50, color = "lightgreen", edgecolor = "black")
+axis[0,1].hist(df_clean["pm10"].dropna(), bins=50, color="lightgreen", edgecolor="black")
 axis[0,1].set_title("PM10 distribution")
 axis[0,1].set_xlabel("PM10 (μg/m³)")
 
 # temperature
-axis[0,2].hist(df_clean["temperature"].dropna(), bins = 50, color = "salmon", edgecolor = "black")
+axis[0,2].hist(df_clean["temperature"].dropna(), bins=50, color="salmon", edgecolor="black")
 axis[0,2].set_title("Temperature distribution")
 axis[0,2].set_xlabel("Temperature (°C)")
 
 # humidity
-axis[1,0].hist(df_clean["humidity"].dropna(), bins = 50, color = "lightblue", edgecolor = "black")
+axis[1,0].hist(df_clean["humidity"].dropna(), bins=50, color="lightblue", edgecolor="black")
 axis[1,0].set_title("Humidity distribution")
-axis[1,0].set_xlabel("Humidity (%")
+axis[1,0].set_xlabel("Humidity (%)")
 
 # wind speed
-axis[1,1].hist(df_clean["wind_speed"].dropna(), bins = 50, color = "orange", edgecolor = "black")
+axis[1,1].hist(df_clean["wind_speed"].dropna(), bins=50, color="orange", edgecolor="black")
 axis[1,1].set_title("Wind speed distribution")
 axis[1,1].set_xlabel("Wind speed (m/s)")
 
 # AQI categories
-if "aqi_categories" in df_clean.columns:
-    category_counts = df_clean["aqi_categories"].value_counts()
-    axis[1,2].bar(category_counts.index, category_counts.values, color = "purple")
+if "aqi_category" in df_clean.columns:
+    category_counts = df_clean["aqi_category"].value_counts()
+    axis[1,2].bar(category_counts.index, category_counts.values, color="purple")
     axis[1,2].set_title("AQI categories")
     axis[1,2].set_xlabel("Category")
     axis[1,2].tick_params(axis="x", rotation=45)
 
 plt.tight_layout()
-plt.savefig(VIS_PATH/"data_distribution.png", dpi=150, bbox_inches="tight")
+plt.savefig(VIS_DIR / "data_distribution.png", dpi=150, bbox_inches="tight")
 plt.close()
-print(f"Visualization saved: {VIS_PATH/'data_distribution.png'}")
+print(f"Visualization saved: {VIS_DIR}/data_distribution.png")
 
 print("Engineering signs")
 print("-" * 40)
@@ -159,21 +189,27 @@ df_clean = df_clean.iloc[:-1]
 
 # coding category signs
 label_encoder = LabelEncoder()
-df_clean ["weather_main_encoded"] = label_encoder.fit_transform(df_clean["weather_main"])
+df_clean["weather_main_encoded"] = label_encoder.fit_transform(df_clean["weather_main"].fillna('Clear'))
 
 # creating time signs
-df_clean ["hour_sin"] = np.sin(2 * np.pi * df_clean["hour"]/24)
-df_clean ["hour_cos"] = np.cos(2 * np.pi * df_clean["hour"]/24)
-df_clean ["day_sin"] = np.sin(2 * np.pi * df_clean["day_of_week"]/7)
-df_clean ["day_cos"] = np.cos(2 * np.pi * df_clean["day_of_week"]/7)
+df_clean["hour_sin"] = np.sin(2 * np.pi * df_clean["hour"]/24)
+df_clean["hour_cos"] = np.cos(2 * np.pi * df_clean["hour"]/24)
+df_clean["day_sin"] = np.sin(2 * np.pi * df_clean["day_of_week"]/7)
+df_clean["day_cos"] = np.cos(2 * np.pi * df_clean["day_of_week"]/7)
 
 # choosing features for models
-features = ["temperature", "humidity", "pressure", "clouds", "hour_sin", "hour_cos", "day_sin", "day_cos", "weather_main_encoded", "is_weekend", "pm25", "pm10"]
+features = ["temperature", "humidity", "pressure", "wind_speed", "clouds", 
+            "hour_sin", "hour_cos", "day_sin", "day_cos", 
+            "weather_main_encoded", "is_weekend", "pm25", "pm10"]
 x = df_clean[features]
 y = df_clean["aqi_category_next"]
 
+if len(x) == 0:
+    print("ERROR: No data available for training after preprocessing!")
+    sys.exit(1)
+
 # separating train / test
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42, shuffle = False)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42, shuffle=False)
 
 # scaling
 scaler = StandardScaler()
@@ -182,13 +218,8 @@ x_test_scaled = scaler.transform(x_test)
 print(f"Training data shape: {x_train_scaled.shape}")
 print(f"Testing data shape: {x_test_scaled.shape}")
 
-# teaching model
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
-import seaborn as sns
-
 # teaching random forest
-model = RandomForestClassifier(n_estimators = 100, max_depth = 10, random_state=42, n_jobs = -1)
+model = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42, n_jobs=-1)
 model.fit(x_train_scaled, y_train)
 
 # prediction
@@ -200,36 +231,51 @@ print("\nClassification report:")
 print(classification_report(y_test, y_pred))
 
 # error matrix
-cn = confusion_matrix(y_test, y_pred, labels = model.classes_)
-plt.figure(figsize = (8,6))
-sns.heatmap(cn, annot=True, fmt="d", cmap="Blues", xticklabels = model.classes_, yticklabels = model.classes_)
+plt.figure(figsize=(8,6))
+cm = confusion_matrix(y_test, y_pred, labels=model.classes_)
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=model.classes_, yticklabels=model.classes_)
 plt.title("Confusion matrix")
 plt.ylabel("True label")
 plt.xlabel("Predicted label")
-plt.show()
+plt.savefig(VIS_DIR / "confusion_matrix.png")
+plt.close()
+print(f"Confusion matrix saved: {VIS_DIR}/confusion_matrix.png")
 
 # sign importance
 feature_importance = pd.DataFrame({"feature": features, "importance": model.feature_importances_}).sort_values("importance", ascending=False)
-plt.figure(figsize = (10,6))
+plt.figure(figsize=(10,6))
 plt.barh(feature_importance["feature"], feature_importance["importance"])
 plt.xlabel("Importance")
 plt.title("Feature importance")
 plt.gca().invert_yaxis()
-plt.show()
-
-# saving model
-import joblib
-import pickle
+plt.savefig(VIS_DIR / "feature_importance.png")
+plt.close()
+print(f"Feature importance saved: {VIS_DIR}/feature_importance.png")
 
 # saving model and scaler
-model_data = {"model": model, "scaler": scaler, "label_encoder": label_encoder, "features": features, "classes": model.classes_.tolist(), "feature_importance": feature_importance.set_index("feature")["importance"].to_dict(),
+model_data = {
+    "model": model, 
+    "scaler": scaler, 
+    "label_encoder": label_encoder, 
+    "features": features, 
+    "classes": model.classes_.tolist(),
+    "feature_importance": feature_importance.set_index("feature")["importance"].to_dict(),
     "metadata": {
         "training_date": datetime.now().isoformat(),
         "accuracy": accuracy_score(y_test, y_pred),
-        "n_samples": len(x_train)}}
+        "n_samples": len(x_train)
+    }
+}
 
 # saving to file
-with open(MODELS_PATH, "wb") as f:
+with open(MODEL_PATH, "wb") as f:
     pickle.dump(model_data, f)
-print("Full model path:", MODELS_PATH)
+print("Full model saved:", MODEL_PATH)
+
+# saving compact model
+compact_data = {k: model_data[k] for k in ["model", "scaler", "label_encoder", "features", "classes"]}
+with open(COMPACT_MODEL_PATH, "wb") as f:
+    pickle.dump(compact_data, f)
+print("Compact model saved:", COMPACT_MODEL_PATH)
+
 
