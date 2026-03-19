@@ -6,7 +6,7 @@ import os
 
 
 class AirCollector:
-    def __init__(self, city="Prague", country="EN"):
+    def __init__(self, city="Prague", country="CZ"):
         self.city = city
         self.country = country
         self.own_api_key = "3eaab97ed540e25e7b261d686d5dfc42" # openweathermap.org
@@ -111,6 +111,7 @@ if __name__ == "__main__":
     collector = AirCollector()
     collector.run_continue(interval_minutes=1)
     
+
 
 
 
