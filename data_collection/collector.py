@@ -93,22 +93,25 @@ class AirCollector:
             return "Hazardous"
 
     # start of indefinite data collection
-    def run_continue(self, interval_hours = 2):
-        print("Start of data collection for: ", self.city)
-        print("Data will be collected every 2 hours")
+    def run_continue(self, interval_minutes=4):
+        print("Start of data collection for:", self.city)
+        print(f"Data will be collected every {interval_minutes} minutes")
+
         while True:
             success = self.collect_and_save()
+
             if success:
-                print(f"Data collected successfully, next collection in {interval_hours} hours")
+                print(f"Data collected successfully, next collection in {interval_minutes} minutes")
+                time.sleep(interval_minutes * 60)
             else:
-                print(f"Data collection failed, next collection in 30 minutes")
-                time.sleep(1800) # 30 min
-            time.sleep(interval_hours * 3600) # interval between data collections
+                print("Data collection failed, retrying in 5 minutes")
+                time.sleep(300)
 
 if __name__ == "__main__":
     collector = AirCollector()
-    collector.collect_and_save()
+    collector.run_continue(interval_minutes=1)
     
+
 
 
 
