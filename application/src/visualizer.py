@@ -35,7 +35,6 @@ class AirQualityVisualizer:
         self.output_dir.mkdir(exist_ok=True)
 
     def _create_gauge_chart(self, ax, value, category, max_value=300):
-        """Create a speedometer-style gauge chart for AQI"""
         # colours for categories
         colours = ['#00E400', '#FFFF00', '#FF7E00', '#FF0000', '#8F3F97']
 
@@ -78,7 +77,6 @@ class AirQualityVisualizer:
         ax.set_title("Air Quality Index (AQI)", fontsize=10)
 
     def plot_current_metrics(self, data, title="Current air quality metrics"):
-        """Plot current air quality metrics in three subplots"""
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
@@ -160,7 +158,6 @@ class AirQualityVisualizer:
         return filename
 
     def plot_24h_trend(self, df, title="24h air quality trend"):
-        """Plot 24-hour trend with three subplots"""
         fig, axes = plt.subplots(3, 1, figsize=(12, 10))
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
@@ -251,7 +248,6 @@ class AirQualityVisualizer:
         return filename
 
     def plot_weekly_stats(self, df, title="Weekly statistics of air quality"):
-        """Plot weekly statistics with four subplots"""
         fig, axes = plt.subplots(2, 2, figsize=(14, 10))
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
@@ -348,7 +344,6 @@ class AirQualityVisualizer:
 
     # comparison of current values with the norm
     def plot_comparison_with_norms(self, data, norms=None):
-        """Compare current values with WHO norms"""
         if norms is None:
             norms = {
                 'PM2.5': {'who': 25},
@@ -422,7 +417,6 @@ class AirQualityVisualizer:
 
     # creates a full dashboard with multiple graphs
     def create_dashboard(self, current_data, historical_df):
-        """Create a comprehensive dashboard with multiple plots"""
         from matplotlib.gridspec import GridSpec
 
         fig = plt.figure(figsize=(16, 12))
@@ -597,19 +591,16 @@ class AirQualityVisualizer:
 
 # quick functions for easy access
 def plot_current(data):
-    """Quick plot of current metrics"""
     vis = AirQualityVisualizer()
     return vis.plot_current_metrics(data)
 
 
 def plot_trend(df):
-    """Quick plot of 24h trend"""
     vis = AirQualityVisualizer()
     return vis.plot_24h_trend(df)
 
 
 def plot_weekly(df):
-    """Quick plot of weekly statistics"""
     vis = AirQualityVisualizer()
     return vis.plot_weekly_stats(df)
 
@@ -653,3 +644,4 @@ if __name__ == "__main__":
     print("Creating a dashboard")
     vis.create_dashboard(current, historical)
     print(f"All files saved to folder: {vis.output_dir}")
+
