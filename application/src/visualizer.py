@@ -3,14 +3,14 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib
+
 matplotlib.use('TkAgg')
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # setting the style
-
 plt.style.use('seaborn-v0_8-darkgrid')
 COLORS = {
     'good': '#00E400',        # green
@@ -25,7 +25,7 @@ COLORS = {
 }
 
 class AirQualityVisualizer:
-    def __init__(self, output_dir = None):
+    def __init__(self, output_dir=None):
         if output_dir:
             self.output_dir = Path(output_dir)
         else:
@@ -34,82 +34,34 @@ class AirQualityVisualizer:
         # creating folder for graph
         self.output_dir.mkdir(exist_ok=True)
 
-    def plot_current_metrics(self, data, title = "current air quality metrics"):
-        fig, axis = plt.subplots(1,3, figsize = (15,5))
-        fig.suptitle(title, fontsize = 14, fontweight = 'bold')
-
-        # air quality indicator
-        if "aqi_score" in data:
-            self._create_gauge_chart(self, ax = axis[0], value = data["aqi_score"], category = data.get("aqi_category", "unknown"))
-
-            # primary polluters
-            polluters = ["pm2.5", "pm10", "NO₂"]
-            values = [data.get("pm25", 0), data.get("pm10", 0), data.get("no2", 0)]
-            bars = axis[1].bar(polluters, values, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
-            axis[1].set_ylabel("concentration (μg/m³)")
-            axis[1].set_title("polluters")
-
-            # adding values above columns
-            for bar, value in zip(bars, values):
-                height = bar.get_height()
-                axis[1].text(bar.get_x() + bar.get_width()/2., height, f"{value:.1f}", ha="center", va="bottom")
-
-                # adding lines for edge values
-                axis[1].axhline(y=25, color="red", linestyle="--", alpha=0.5, label="edge pm2.5")
-                axis[1].axhline(y=50, color="orange", linestyle="--", alpha=0.5, label="edge pm10")
-                axis[1].legend(fontsize = 8)
-
-                # weather conditions
-                weather_metrics = ["temperature", "humidity", "wind_speed"]
-                weather_values = [data.get("temperature", 0), data.get("humidity", 0), data.get("wind_speed", 0)]
-                weather_colors = ['#d62728', '#2ca02c', '#1f77b4']
-                bars = axis[2].set_ylabel("value")
-                axis[2].set_title("weather conditions")
-
-                # adding measuring units
-                units = ['°C', '%', 'м/с']
-                for bar, value, unit in zip(bars, weather_values, units):
-                    height = bar.get_height()
-                    axis[2].text(bar.get_x() + bar.get_width()/2., height, f"{value:{unit}}", ha = "center", va = "bottom")
-
-                    # adding timestamp
-                    if "timestamp" in data:
-                        fig.text(0.02, 0.02, f'Data in: {data["timestamp"]}', fontsize=8, style="italic")
-                        plt.tight_layout()
-
-                        # saving
-                        filename = self.output_dir / f"current_metrics_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png"
-                        plt.savefig(filename, dpi = 100, bbox_inches = "tight")
-                        plt.show()
-                        return filename
-
-    def _create_gauge_chart(self, ax, value, category, max_value = 300):
+    def _create_gauge_chart(self, ax, value, category, max_value=300):
+        """Create a speedometer-style gauge chart for AQI"""
         # colours for categories
         colours = ['#00E400', '#FFFF00', '#FF7E00', '#FF0000', '#8F3F97']
 
         # creating a speedometer
         theta = np.linspace(0, np.pi, 100)
         r = [0.8] * 100
-
+        
         # draw the arc background
         ax.plot(theta, r, color='gray', linewidth=3)
-        
-        # drawing an arch
+
+        # drawing colored segments
         n_segments = 5
         for i in range(n_segments):
             start_angle = i * np.pi / n_segments
             end_angle = (i + 1) * np.pi / n_segments
             theta_seg = np.linspace(start_angle, end_angle, 20)
-            ax.fill_between(theta_seg, 0.7, 0.9, color=colours[i], alpha = 0.3)
+            ax.fill_between(theta_seg, 0.7, 0.9, color=colours[i], alpha=0.3)
 
         # drawing an arrow
         angle = (value / max_value) * np.pi
         arrow_length = 0.7
-        ax.arrow(np.pi / 2, 0, arrow_length * np.cos(angle - np.pi / 2),
+        ax.arrow(np.pi / 2, 0, 
+                 arrow_length * np.cos(angle - np.pi / 2),
                  arrow_length * np.sin(angle - np.pi / 2),
-                 head_width = 0.1,
-                 head_length = 0.1,
-                 fc = "black", ec = "black")
+                 head_width=0.1, head_length=0.1,
+                 fc="black", ec="black")
 
         # adding value text
         ax.text(np.pi / 2, -0.2, f"{value:.0f}", ha="center", va="center", fontsize=16, fontweight="bold")
@@ -131,35 +83,55 @@ class AirQualityVisualizer:
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
         # air quality indicator (gauge chart)
-        if "aqi_score" in data:
+        if "aqi_score" in data and data.get("aqi_score") is not None:
             self._create_gauge_chart(axes[0], data["aqi_score"], data.get("aqi_category", "unknown"))
         else:
-            # If no aqi_score, create a placeholder
             axes[0].text(0.5, 0.5, "AQI data\nnot available", ha="center", va="center", transform=axes[0].transAxes)
             axes[0].set_title("Air Quality Index (AQI)", fontsize=10)
             axes[0].axis("off")
 
-        # primary polluters
+        # primary polluters - with None handling
         pollutants = ["PM2.5", "PM10", "NO2"]
-        values = [data.get("pm25", 0), data.get("pm10", 0), data.get("no2", 0)]
+
+        # Get values and replace None with 0
+        pm25_val = data.get("pm25")
+        pm10_val = data.get("pm10")
+        no2_val = data.get("no2")
+
+        pm25_val = pm25_val if pm25_val is not None else 0
+        pm10_val = pm10_val if pm10_val is not None else 0
+        no2_val = no2_val if no2_val is not None else 0
+
+        values = [pm25_val, pm10_val, no2_val]
+
         bars = axes[1].bar(pollutants, values, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
         axes[1].set_ylabel("Concentration (μg/m³)")
         axes[1].set_title("Pollutants")
 
         # adding values above columns
         for bar, value in zip(bars, values):
-            height = bar.get_height()
-            axes[1].text(bar.get_x() + bar.get_width()/2., height, f"{value:.1f}", 
-                        ha="center", va="bottom", fontsize=9)
+            if value > 0:
+                height = bar.get_height()
+                axes[1].text(bar.get_x() + bar.get_width() / 2., height, f"{value:.1f}",
+                             ha="center", va="bottom", fontsize=9)
 
         # adding lines for limit values
         axes[1].axhline(y=25, color="red", linestyle="--", alpha=0.5, label="PM2.5 limit")
         axes[1].axhline(y=50, color="orange", linestyle="--", alpha=0.5, label="PM10 limit")
         axes[1].legend(fontsize=8)
 
-        # weather conditions
+        # weather conditions - with None handling
         weather_metrics = ["Temperature", "Humidity", "Wind"]
-        weather_values = [data.get("temperature", 0), data.get("humidity", 0), data.get("wind_speed", 0)]
+
+        temp_val = data.get("temperature")
+        hum_val = data.get("humidity")
+        wind_val = data.get("wind_speed")
+
+        temp_val = temp_val if temp_val is not None else 0
+        hum_val = hum_val if hum_val is not None else 0
+        wind_val = wind_val if wind_val is not None else 0
+
+        weather_values = [temp_val, hum_val, wind_val]
         weather_colors = ['#d62728', '#2ca02c', '#1f77b4']
         weather_bars = axes[2].bar(weather_metrics, weather_values, color=weather_colors)
         axes[2].set_ylabel("Value")
@@ -169,21 +141,24 @@ class AirQualityVisualizer:
         units = ['°C', '%', 'm/s']
         for bar, value, unit in zip(weather_bars, weather_values, units):
             height = bar.get_height()
-            axes[2].text(bar.get_x() + bar.get_width()/2., height, f"{value:.1f}{unit}", 
-                        ha="center", va="bottom", fontsize=9)
+            axes[2].text(bar.get_x() + bar.get_width() / 2., height, f"{value:.1f}{unit}",
+                         ha="center", va="bottom", fontsize=9)
 
         # adding timestamp
         if "timestamp" in data:
             fig.text(0.02, 0.02, f'Data at: {data["timestamp"]}', fontsize=8, style="italic")
-        
-        plt.tight_layout()
+
+        try:
+            plt.tight_layout()
+        except:
+            plt.subplots_adjust(wspace=0.3)
 
         # saving
         filename = self.output_dir / f"current_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         plt.savefig(filename, dpi=100, bbox_inches="tight")
         plt.show()
         return filename
-    
+
     def plot_24h_trend(self, df, title="24h air quality trend"):
         """Plot 24-hour trend with three subplots"""
         fig, axes = plt.subplots(3, 1, figsize=(12, 10))
@@ -275,20 +250,22 @@ class AirQualityVisualizer:
         plt.show()
         return filename
 
-    def plot_weekly_states(self, df, title = "weekly statics of air quality"):
-        fig, axis = plt.subplots(2,2, figsize = (14,10))
-        fig.suptitle(title, fontsize = 14, fontweight = 'bold')
+    def plot_weekly_stats(self, df, title="Weekly statistics of air quality"):
+        """Plot weekly statistics with four subplots"""
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        fig.suptitle(title, fontsize=14, fontweight='bold')
 
         # make a copy to avoid modifying original
         df = df.copy()
         
         # adding day of week
         df["weekday"] = pd.to_datetime(df["timestamp"]).dt.day_name()
-        week_day_order = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-        short_days = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        week_day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", 
+                         "Friday", "Saturday", "Sunday"]
+        short_days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
         # average pm2.5 for week days
-        ax1 = axis[0,0]
+        ax1 = axes[0, 0]
         if "pm25" in df.columns:
             week_day_pm25 = df.groupby("weekday")["pm25"].mean().reindex(week_day_order)
             bars = ax1.bar(range(7), week_day_pm25.values, color="steelblue")
@@ -373,42 +350,48 @@ class AirQualityVisualizer:
     def plot_comparison_with_norms(self, data, norms=None):
         """Compare current values with WHO norms"""
         if norms is None:
-            # WHO norms for Prague
             norms = {
                 'PM2.5': {'who': 25},
                 'PM10': {'who': 50},
                 'NO2': {'who': 40}
             }
-        
+
         fig, ax = plt.subplots(figsize=(10, 6))
-        
+
         pollutants = []
         current_values = []
         who_norms = []
         colors = []
-        
-        for pollutant, value in [('PM2.5', data.get('pm25', 0)),
-                                 ('PM10', data.get('pm10', 0)),
-                                 ('NO2', data.get('no2', 0))]:
+
+        # Get values with None handling
+        pm25_val = data.get('pm25')
+        pm10_val = data.get('pm10')
+        no2_val = data.get('no2')
+
+        pm25_val = pm25_val if pm25_val is not None else 0
+        pm10_val = pm10_val if pm10_val is not None else 0
+        no2_val = no2_val if no2_val is not None else 0
+
+        for pollutant, value in [('PM2.5', pm25_val),
+                                 ('PM10', pm10_val),
+                                 ('NO2', no2_val)]:
             if value > 0:
                 pollutants.append(pollutant)
                 current_values.append(value)
                 who_norms.append(norms[pollutant]['who'])
                 colors.append("red" if value > norms[pollutant]['who'] else "green")
-        
+
         if not pollutants:
             ax.text(0.5, 0.5, "No pollutant data available", ha='center', va='center', transform=ax.transAxes)
         else:
             x = np.arange(len(pollutants))
             width = 0.35
 
-            # current value bars
-            bars1 = ax.bar(x - width/2, current_values, width, label="Current values", 
-                          color=colors, edgecolor="black")
-            # WHO norms bars
-            bars2 = ax.bar(x + width/2, who_norms, width, label="WHO norms", 
-                          color="gray", alpha=0.5, edgecolor="black")
-            
+            bars1 = ax.bar(x - width / 2, current_values, width, label="Current values",
+                           color=colors, edgecolor="black")
+            bars2 = ax.bar(x + width / 2, who_norms, width, label="WHO norms",
+                           color="gray", alpha=0.5, edgecolor="black")
+
             ax.set_xlabel("Pollutant")
             ax.set_ylabel("Concentration (μg/m³)")
             ax.set_title("Comparison of current values with WHO norms")
@@ -416,81 +399,103 @@ class AirQualityVisualizer:
             ax.set_xticklabels(pollutants)
             ax.legend()
 
-            # adding values on bars
             for bar in bars1:
                 height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height, f"{height:.1f}", 
-                       ha="center", va="bottom", fontsize=9)
+                ax.text(bar.get_x() + bar.get_width() / 2., height, f"{height:.1f}",
+                        ha="center", va="bottom", fontsize=9)
             for bar in bars2:
                 height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height, f"{height:.1f}", 
-                       ha="center", va="bottom", fontsize=9)
-            
-            ax.grid(True, alpha=0.3, axis="y")
-        
-        plt.tight_layout()
+                ax.text(bar.get_x() + bar.get_width() / 2., height, f"{height:.1f}",
+                        ha="center", va="bottom", fontsize=9)
 
-        # saving
+            ax.grid(True, alpha=0.3, axis="y")
+
+        try:
+            plt.tight_layout()
+        except:
+            plt.subplots_adjust()
+
         filename = self.output_dir / f'comparison_norms_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
         plt.savefig(filename, dpi=100, bbox_inches="tight")
         plt.show()
         return filename
 
-    # creates a full dashboard with a few graphs
+    # creates a full dashboard with multiple graphs
     def create_dashboard(self, current_data, historical_df):
+        """Create a comprehensive dashboard with multiple plots"""
         from matplotlib.gridspec import GridSpec
 
         fig = plt.figure(figsize=(16, 12))
         fig.suptitle(f"Air Quality Dashboard - Prague\n{datetime.now().strftime('%Y-%m-%d %H:%M')}",
                      fontsize=16, fontweight="bold")
 
-        # creating a grid for the plots
+        # creating a grid for the plots with adjusted spacing
         gs = GridSpec(3, 3, figure=fig, hspace=0.4, wspace=0.4)
 
-        # current AQI (speedometer)
+        # ROW 1
+
+        # 1. current AQI (speedometer)
         ax1 = fig.add_subplot(gs[0, 0])
-        if "aqi_score" in current_data:
+        if "aqi_score" in current_data and current_data.get("aqi_score") is not None:
             self._create_gauge_chart(ax1, current_data.get("aqi_score", 50),
                                      current_data.get("aqi_category", "unknown"))
         else:
             ax1.text(0.5, 0.5, "No AQI data", ha="center", va="center", transform=ax1.transAxes)
+            ax1.set_title("Air Quality Index (AQI)")
             ax1.axis("off")
 
-        # current pollutants
+        # 2. current pollutants - with None handling
         ax2 = fig.add_subplot(gs[0, 1])
+
+        # Safe extraction of values (handle None)
+        pm25_val = current_data.get("pm25")
+        pm10_val = current_data.get("pm10")
+        no2_val = current_data.get("no2")
+
+        # Replace None with 0
+        pm25_val = pm25_val if pm25_val is not None else 0
+        pm10_val = pm10_val if pm10_val is not None else 0
+        no2_val = no2_val if no2_val is not None else 0
+
         pollutants = ["PM2.5", "PM10", "NO2"]
-        values = [current_data.get("pm25", 0), current_data.get("pm10", 0), current_data.get("no2", 0)]
+        values = [pm25_val, pm10_val, no2_val]
+
         bars = ax2.bar(pollutants, values, color=['#1f77b4', '#ff7f0e', '#2ca02c'])
         ax2.set_title("Current Pollutants")
         ax2.set_ylabel("μg/m³")
 
         # Add values on bars
         for bar, val in zip(bars, values):
-            height = bar.get_height()
-            ax2.text(bar.get_x() + bar.get_width() / 2., height, f"{val:.1f}",
-                     ha="center", va="bottom", fontsize=8)
+            if val > 0:
+                height = bar.get_height()
+                ax2.text(bar.get_x() + bar.get_width() / 2., height, f"{val:.1f}",
+                         ha="center", va="bottom", fontsize=8)
 
-        # 24h trend
+        # 3. 24h trend
         ax3 = fig.add_subplot(gs[0, 2])
         if len(historical_df) > 0 and isinstance(historical_df, pd.DataFrame):
             recent = historical_df.tail(24)
             if "pm25" in recent.columns and recent["pm25"].notna().any():
                 ax3.plot(range(len(recent)), recent["pm25"].values, color=COLORS["pm25"],
-                         label="PM2.5", marker='o', markersize=4)
+                         label="PM2.5", marker='o', markersize=4, linewidth=1.5)
             if "pm10" in recent.columns and recent["pm10"].notna().any():
                 ax3.plot(range(len(recent)), recent["pm10"].values, color=COLORS["pm10"],
-                         label="PM10", marker='s', markersize=4)
+                         label="PM10", marker='s', markersize=4, linewidth=1.5)
             ax3.set_title("24h Trend")
             ax3.legend(fontsize=8)
             ax3.set_xlabel("Hours ago")
             ax3.set_ylabel("μg/m³")
             ax3.set_xticks(range(0, 24, 4))
+            ax3.grid(True, alpha=0.3)
         else:
             ax3.text(0.5, 0.5, "No trend data", ha="center", va="center", transform=ax3.transAxes)
+            ax3.set_title("24h Trend")
 
-        # category distribution
+        # ROW 2
+
+        # 4. category distribution
         ax4 = fig.add_subplot(gs[1, 0])
-        if "aqi_category" in historical_df.columns:
+        if "aqi_category" in historical_df.columns and len(historical_df) > 0:
             cat_counts = historical_df["aqi_category"].value_counts()
             if len(cat_counts) > 0:
                 colors = [COLORS.get(cat, "gray") for cat in cat_counts.index]
@@ -501,44 +506,56 @@ class AirQualityVisualizer:
         else:
             ax4.text(0.5, 0.5, "No category data", ha="center", va="center", transform=ax4.transAxes)
 
-        # hourly statistics
+        # 5. hourly statistics
         ax5 = fig.add_subplot(gs[1, 1])
         if "timestamp" in historical_df.columns and len(historical_df) > 0:
             df_hourly = historical_df.copy()
             df_hourly["hour"] = pd.to_datetime(df_hourly["timestamp"]).dt.hour
             hourly_avg = df_hourly.groupby("hour")["pm25"].mean()
-            if len(hourly_avg) > 0:
+            if len(hourly_avg) > 0 and hourly_avg.notna().any():
                 ax5.plot(hourly_avg.index, hourly_avg.values, "o-", color=COLORS["pm25"], markersize=4)
                 ax5.set_title("Average PM2.5 by Hour")
                 ax5.set_xlabel("Hour")
                 ax5.set_ylabel("PM2.5 (μg/m³)")
                 ax5.grid(True, alpha=0.3)
                 ax5.set_xticks(range(0, 24, 3))
+                ax5.set_xlim(0, 23)
             else:
                 ax5.text(0.5, 0.5, "No hourly data", ha="center", va="center", transform=ax5.transAxes)
         else:
             ax5.text(0.5, 0.5, "No hourly data", ha="center", va="center", transform=ax5.transAxes)
 
-        # weather conditions
+        # 6. weather conditions
         ax6 = fig.add_subplot(gs[1, 2])
-        weather_data = [
-            current_data.get("temperature", 0),
-            current_data.get("humidity", 0),
-            current_data.get("wind_speed", 0),
-            current_data.get("pressure", 1013) / 10  # scale pressure
-        ]
+
+        # Safe extraction of weather values
+        temp_val = current_data.get("temperature")
+        hum_val = current_data.get("humidity")
+        wind_val = current_data.get("wind_speed")
+        press_val = current_data.get("pressure")
+
+        temp_val = temp_val if temp_val is not None else 0
+        hum_val = hum_val if hum_val is not None else 0
+        wind_val = wind_val if wind_val is not None else 0
+        press_val = press_val if press_val is not None else 1013
+
+        weather_data = [temp_val, hum_val, wind_val, press_val / 10]  # scale pressure
         weather_labels = ['Temp (°C)', 'Humidity (%)', 'Wind (m/s)', 'Pressure (×10 hPa)']
-        bars = ax6.bar(weather_labels, weather_data, color=['#d62728', '#2ca02c', '#1f77b4', '#9467bd'])
+        weather_colors = ['#d62728', '#2ca02c', '#1f77b4', '#9467bd']
+
+        weather_bars = ax6.bar(weather_labels, weather_data, color=weather_colors)
         ax6.set_title("Current Weather")
         ax6.tick_params(axis="x", rotation=45)
 
         # Add values on bars
-        for bar, val in zip(bars, weather_data):
+        for bar, val in zip(weather_bars, weather_data):
             height = bar.get_height()
             ax6.text(bar.get_x() + bar.get_width() / 2., height, f"{val:.1f}",
                      ha="center", va="bottom", fontsize=8)
 
-        # weekly statistics - daily averages
+        # ROW 3
+
+        # 7. weekly statistics - daily averages
         ax7 = fig.add_subplot(gs[2, :])
         if "timestamp" in historical_df.columns and len(historical_df) > 0:
             df_daily = historical_df.copy()
@@ -547,10 +564,10 @@ class AirQualityVisualizer:
 
             if len(daily_avg) > 0:
                 x = range(len(daily_avg))
-                if "pm25" in daily_avg.columns:
+                if "pm25" in daily_avg.columns and daily_avg["pm25"].notna().any():
                     ax7.plot(x, daily_avg["pm25"].values, "o-", color=COLORS["pm25"],
                              label="PM2.5", linewidth=2, markersize=6)
-                if "pm10" in daily_avg.columns:
+                if "pm10" in daily_avg.columns and daily_avg["pm10"].notna().any():
                     ax7.plot(x, daily_avg["pm10"].values, "s-", color=COLORS["pm10"],
                              label="PM10", linewidth=2, markersize=6)
                 ax7.set_title("Daily Averages (Last 7 Days)")
@@ -565,9 +582,11 @@ class AirQualityVisualizer:
         else:
             ax7.text(0.5, 0.5, "No daily data", ha="center", va="center", transform=ax7.transAxes)
 
+        # Adjust layout - use try-except to handle tight_layout issues
         try:
             plt.tight_layout()
         except:
+            # If tight_layout fails, use subplots_adjust
             plt.subplots_adjust(left=0.05, right=0.95, top=0.92, bottom=0.08, hspace=0.4, wspace=0.4)
 
         # saving
@@ -576,26 +595,31 @@ class AirQualityVisualizer:
         plt.show()
         return filename
 
-# quick graph for current data
+# quick functions for easy access
 def plot_current(data):
+    """Quick plot of current metrics"""
     vis = AirQualityVisualizer()
     return vis.plot_current_metrics(data)
 
-# quick trend graph
+
 def plot_trend(df):
+    """Quick plot of 24h trend"""
     vis = AirQualityVisualizer()
     return vis.plot_24h_trend(df)
 
-# quick weekly statistics
+
 def plot_weekly(df):
+    """Quick plot of weekly statistics"""
     vis = AirQualityVisualizer()
-    return vis.plot_weekly_states(df)
+    return vis.plot_weekly_stats(df)
+
 
 if __name__ == "__main__":
-    print("testing visualizer")
+    print("Testing visualizer")
 
     # creating test data
-    current = {'timestamp': datetime.now().isoformat(),
+    current = {
+        'timestamp': datetime.now().isoformat(),
         'pm25': 35.5,
         'pm10': 48.2,
         'no2': 42.1,
@@ -604,17 +628,18 @@ if __name__ == "__main__":
         'wind_speed': 3.2,
         'pressure': 1012,
         'aqi_score': 85,
-        'aqi_category': 'moderate'}
+        'aqi_category': 'moderate'
+    }
 
     # creating test dataframe
-    dates = pd.date_range(end = datetime.now(), periods = 48, freq="H")
+    dates = pd.date_range(end=datetime.now(), periods=48, freq="H")
     historical = pd.DataFrame({
         "timestamp": dates,
-        "pm25": np.random.lognormal(mean = 3.0, sigma = 0.5, size = 48),
-        "pm10": np.random.lognormal(mean = 3.5, sigma = 0.5, size = 48),
-        "temperature": np.random.normal(loc=12, scale=3, size = 48),
-        "humidity": np.random.normal(loc=70, scale=10, size = 48),
-        "aqi_category": np.random.choice(["good", "moderate", "unhealthy_sensitive"], size = 48)
+        "pm25": np.random.lognormal(mean=3.0, sigma=0.5, size=48),
+        "pm10": np.random.lognormal(mean=3.5, sigma=0.5, size=48),
+        "temperature": np.random.normal(loc=12, scale=3, size=48),
+        "humidity": np.random.normal(loc=70, scale=10, size=48),
+        "aqi_category": np.random.choice(["good", "moderate", "unhealthy_sensitive"], size=48)
     })
 
     # testing functions
@@ -624,10 +649,7 @@ if __name__ == "__main__":
     print("Creating a graph of 24h trend")
     vis.plot_24h_trend(historical.tail(24))
     print("Creating weekly statistics")
-    vis.plot_weekly_states(historical)
+    vis.plot_weekly_stats(historical)
     print("Creating a dashboard")
-    vis.create_dashboard(current,historical)
+    vis.create_dashboard(current, historical)
     print(f"All files saved to folder: {vis.output_dir}")
-
-
-
