@@ -16,8 +16,8 @@ class AirQualityPredictor:
             self.features = model_data["features"]
             self.classes = model_data["classes"]
             print("Model loaded", model_path)
-            print(f"  Classes: {', '.join(self.classes)}")
-            print(f"  Features: {len(self.features)}")
+            print(f"Classes: {', '.join(self.classes)}")
+            print(f"Features: {len(self.features)}")
         except FileNotFoundError:
             print("Model was not found. Please check the path and try again.", model_path)
             print("Complete model training first")
@@ -51,3 +51,4 @@ class AirQualityPredictor:
             "confidence": confidence, 
             "probabilities": dict(zip(self.classes, probabilities))
         }
+
