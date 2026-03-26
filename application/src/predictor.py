@@ -26,12 +26,14 @@ class AirQualityPredictor:
     # predicts the category of air quality
     def predict(self, features_dict): # features_dict = features dictionary
         if self.model is None:
-            return {"category": "Unknown", "confidence": None}
+            return {"category": "unknown", "confidence": 0.0}
+        
         # vector for features in the right order
         feature_vector = []
         for feature in self.features:
-            value = features_dict.get(feature,0)
+            value = features_dict.get(feature, 0)
             feature_vector.append(value)
+        
         # changing into numpy
         x = np.array(feature_vector).reshape(1, -1)
         x_scaled = self.scaler.transform(x)
@@ -41,6 +43,11 @@ class AirQualityPredictor:
         probabilities = self.model.predict_proba(x_scaled)[0]
 
         # changing index into category
-        category = self.label_encoder.inverse_transform([prediction_idx])[0]
+        category = prediction_idx
         confidence = np.max(probabilities)
-        return {"category": category, "confidence": confidence, "probabilities": dict(zip(self.classes, probabilities))}
+        
+        return {
+            "category": category, 
+            "confidence": confidence, 
+            "probabilities": dict(zip(self.classes, probabilities))
+        }
