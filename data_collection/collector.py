@@ -34,7 +34,6 @@ class AirCollector:
             return None
 
     def get_air_quality_data(self):
-        """Get air quality data from IQAir API"""
         try:
             url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
             response = requests.get(url, timeout=15)
@@ -43,22 +42,18 @@ class AirCollector:
             if data.get("status") == "success":
                 pollution_data = data["data"]["current"]["pollution"]
 
-                # Получаем PM2.5 (убеждаемся, что это число)
                 pm25 = pollution_data.get("aqius")
                 if pm25 is not None:
                     pm25 = float(pm25)
 
-                # Пробуем получить PM10
                 pm10 = pollution_data.get("aqipc")
                 if pm10 is not None:
                     pm10 = float(pm10)
 
-                # Если PM10 нет, рассчитываем на основе PM2.5
                 if pm10 is None and pm25 is not None:
-                    # Генерируем случайный коэффициент от 1.4 до 1.8
                     ratio = np.random.uniform(1.4, 1.8)
                     pm10 = pm25 * ratio
-                    pm10 = round(pm10, 1)  # Округляем до 1 знака
+                    pm10 = round(pm10, 1)
                     # PM10 calculated from PM2.5: {pm25} × {ratio:.2f} = {pm10}
 
                 print(f"IQAir: PM2.5={pm25}, PM10={pm10}")
@@ -95,12 +90,10 @@ class AirCollector:
             pm25 = air_quality.get("pm25")
             pm10 = air_quality.get("pm10")
 
-            # Если PM2.5 нет, ничего не сохраняем
             if pm25 is None:
-                print(f"⚠ No PM2.5 data, skipping...")
+                print(f"No PM2.5 data, skipping...")
                 return False
-
-            # Если PM10 всё ещё None, рассчитываем
+                
             if pm10 is None:
                 ratio = np.random.uniform(1.4, 1.8)
                 pm10 = pm25 * ratio
@@ -161,3 +154,4 @@ class AirCollector:
 if __name__ == "__main__":
     collector = AirCollector()
     collector.run_continue(interval_minutes=1)
+
