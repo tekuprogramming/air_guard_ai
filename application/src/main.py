@@ -409,9 +409,9 @@ class AirGuardApp:
         print("AirGuard 1.0")
         print("\nUse of application: air quality prediction with use of machine learning")
         print("\nStructure:")
-        print("   • data_collection/ - data collection")
-        print("   • module_training/ - model training")
-        print("   • application/ - application")
+        print("data_collection/ - data collection")
+        print("module_training/ - model training")
+        print("application/ - application")
         print("\nAuthor: Milana Poljanskova")
         print("=" * 60)
 
@@ -452,3 +452,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
