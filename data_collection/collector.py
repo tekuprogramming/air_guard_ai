@@ -50,12 +50,6 @@ class AirCollector:
                 if pm10 is not None:
                     pm10 = float(pm10)
 
-                if pm10 is None and pm25 is not None:
-                    ratio = np.random.uniform(1.4, 1.8)
-                    pm10 = pm25 * ratio
-                    pm10 = round(pm10, 1)
-                    # PM10 calculated from PM2.5: {pm25} × {ratio:.2f} = {pm10}
-
                 print(f"IQAir: PM2.5={pm25}, PM10={pm10}")
                 return {"pm25": pm25, "pm10": pm10}
             else:
@@ -93,12 +87,6 @@ class AirCollector:
             if pm25 is None:
                 print(f"No PM2.5 data, skipping...")
                 return False
-                
-            if pm10 is None:
-                ratio = np.random.uniform(1.4, 1.8)
-                pm10 = pm25 * ratio
-                pm10 = round(pm10, 1)
-                print(f"PM10 calculated (fallback): {pm25} × {ratio:.2f} = {pm10}")
 
             record = {
                 "timestamp": str(timestamp.isoformat()),
