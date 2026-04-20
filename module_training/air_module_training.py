@@ -227,46 +227,12 @@ if y.isna().any():
     print(f"After removing NaN: {len(y)} records")
     print(y.value_counts())
 
-# Check if we have at least 2 categories
+# Check if we have enough classes
 if len(y.unique()) < 2:
-    print("Only one category in data! Adding synthetic data for unhealthy_sensitive...")
-
-    np.random.seed(42)
-
-    unhealthy_data = df_clean[df_clean['aqi_category'] == 'unhealthy'].copy()
-
-    if len(unhealthy_data) > 0:
-        synthetic = unhealthy_data.head(200).copy()
-
-        synthetic['pm25'] = np.random.uniform(35, 55, len(synthetic))
-        synthetic['pm10'] = synthetic['pm25'] * np.random.uniform(1.4, 1.8)
-        synthetic['aqi_category'] = 'unhealthy_sensitive'
-
-        base_time = datetime.now()
-        for idx, row in synthetic.iterrows():
-            synthetic.loc[idx, 'timestamp'] = (base_time + timedelta(hours=idx)).isoformat()
-            synthetic.loc[idx, 'date'] = (base_time + timedelta(hours=idx)).date().isoformat()
-            synthetic.loc[idx, 'hour'] = (base_time + timedelta(hours=idx)).hour
-
-        df_clean = pd.concat([df_clean, synthetic], ignore_index=True)
-        print(f"Added {len(synthetic)} synthetic records for unhealthy_sensitive")
-
-        df_clean = df_clean.sort_values("timestamp")
-        df_clean["aqi_category_next"] = df_clean["aqi_category"].shift(-1)
-        df_clean = df_clean.iloc[:-1]
-        df_clean = df_clean.dropna(subset=['aqi_category_next'])
-
-        df_clean["weather_main_encoded"] = label_encoder.fit_transform(df_clean["weather_main"].fillna('Clear'))
-        df_clean["hour_sin"] = np.sin(2 * np.pi * df_clean["hour"] / 24)
-        df_clean["hour_cos"] = np.cos(2 * np.pi * df_clean["hour"] / 24)
-        df_clean["day_sin"] = np.sin(2 * np.pi * df_clean["day_of_week"] / 7)
-        df_clean["day_cos"] = np.cos(2 * np.pi * df_clean["day_of_week"] / 7)
-
-        x = df_clean[features]
-        y = df_clean["aqi_category_next"]
-
-        print("\nNew distribution:")
-        print(y.value_counts())
+    print("ERROR: Dataset contains only one class!")
+    print("You need to collect more real data with different air quality conditions.")
+    print("Training cannot continue.")
+    sys.exit(1)
     else:
         print("No unhealthy records found to create synthetic data!")
         sys.exit(1)
