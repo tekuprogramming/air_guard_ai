@@ -4,7 +4,9 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib
 
-matplotlib.use('TkAgg')
+import os
+if os.environ.get("DISPLAY") is None:
+    matplotlib.use("Agg")
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -81,8 +83,8 @@ class AirQualityVisualizer:
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
         # air quality indicator (gauge chart)
-        if "aqi_score" in data and data.get("aqi_score") is not None:
-            self._create_gauge_chart(axes[0], data["aqi_score"], data.get("aqi_category", "unknown"))
+        if "confidence" in data and data.get("confidence") is not None:
+            self._create_gauge_chart(ax1, data["confidence"] * 100, data.get("category", "unknown"))
         else:
             axes[0].text(0.5, 0.5, "AQI data\nnot available", ha="center", va="center", transform=axes[0].transAxes)
             axes[0].set_title("Air Quality Index (AQI)", fontsize=10)
@@ -97,7 +99,7 @@ class AirQualityVisualizer:
         no2_val = data.get("no2")
 
         pm25_val = pm25_val if pm25_val is not None else 0
-        pm10_val = pm10_val if pm10_val is not None else np.nan
+        pm10_val = pm10_val if pm10_val is not None else 0
         no2_val = no2_val if no2_val is not None else 0
 
         values = [pm25_val, pm10_val, no2_val]
