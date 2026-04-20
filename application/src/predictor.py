@@ -43,7 +43,7 @@ class AirQualityPredictor:
         probabilities = self.model.predict_proba(x_scaled)[0]
 
         # changing index into category
-        category = prediction_idx
+        category = self.classes[prediction_idx]
         confidence = np.max(probabilities)
         
         return {
