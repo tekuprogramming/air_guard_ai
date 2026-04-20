@@ -82,13 +82,21 @@ class AirQualityVisualizer:
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         fig.suptitle(title, fontsize=14, fontweight='bold')
 
-        # air quality indicator (gauge chart)
-        if "confidence" in data and data.get("confidence") is not None:
-            self._create_gauge_chart(ax1, data["confidence"] * 100, data.get("category", "unknown"))
+        ax1 = axes[0]
+
+        if "aqi_category" in data:
+            category_map = {
+                "good": 50,
+                "moderate": 100,
+                "unhealthy_sensitive": 150,
+                "unhealthy": 200,
+                "hazardous": 300
+            }
+        value = category_map.get(data["aqi_category"], 100)
+        self._create_gauge_chart(ax1, value, data["aqi_category"])
         else:
-            axes[0].text(0.5, 0.5, "AQI data\nnot available", ha="center", va="center", transform=axes[0].transAxes)
-            axes[0].set_title("Air Quality Index (AQI)", fontsize=10)
-            axes[0].axis("off")
+        ax1.text(0.5, 0.5, "AQI data\nnot available", ha="center", va="center", transform=ax1.transAxes)
+        ax1.axis("off")
 
         # primary polluters - with None handling
         pollutants = ["PM2.5", "PM10", "NO2"]
@@ -432,9 +440,16 @@ class AirQualityVisualizer:
 
         # 1. current AQI (speedometer)
         ax1 = fig.add_subplot(gs[0, 0])
-        if "aqi_score" in current_data and current_data.get("aqi_score") is not None:
-            self._create_gauge_chart(ax1, current_data.get("aqi_score", 50),
-                                     current_data.get("aqi_category", "unknown"))
+        if "aqi_category" in current_data:
+            category_map = {
+                "good": 50,
+                "moderate": 100,
+                "unhealthy_sensitive": 150,
+                "unhealthy": 200,
+                "hazardous": 300
+            }
+            value = category_map.get(current_data["aqi_category"], 100)
+            self._create_gauge_chart(ax1, value, current_data["aqi_category"])
         else:
             ax1.text(0.5, 0.5, "No AQI data", ha="center", va="center", transform=ax1.transAxes)
             ax1.set_title("Air Quality Index (AQI)")
@@ -620,7 +635,6 @@ if __name__ == "__main__":
         'humidity': 78,
         'wind_speed': 3.2,
         'pressure': 1012,
-        'aqi_score': 85,
         'aqi_category': 'moderate'
     }
 
