@@ -122,6 +122,8 @@ class AirGuardApp:
             return "unhealthy_sensitive"
         elif pm25 <= 150:
             return "unhealthy"
+        elif pm25 is None:
+            return "unknown"
         else:
             return "hazardous"
 
@@ -173,7 +175,7 @@ class AirGuardApp:
                 "pm25": pm25,
                 "pm10": pm10,
                 "no2": 0,
-                "aqi_category": self.calculate_aqi_category(pm25 if pm25 else 20)
+                "aqi_category": self.calculate_aqi_category(pm25) if pm25 is not None else "unknown"
             }
             print("Successfully received data from API")
             return self.current_data
