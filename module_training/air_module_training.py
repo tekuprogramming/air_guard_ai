@@ -233,9 +233,6 @@ if len(y.unique()) < 2:
     print("You need to collect more real data with different air quality conditions.")
     print("Training cannot continue.")
     sys.exit(1)
-    else:
-        print("No unhealthy records found to create synthetic data!")
-        sys.exit(1)
 
 # Final NaN check
 if y.isna().any():
