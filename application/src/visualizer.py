@@ -97,7 +97,7 @@ class AirQualityVisualizer:
         no2_val = data.get("no2")
 
         pm25_val = pm25_val if pm25_val is not None else 0
-        pm10_val = pm10_val if pm10_val is not None else 0
+        pm10_val = pm10_val if pm10_val is not None else np.nan
         no2_val = no2_val if no2_val is not None else 0
 
         values = [pm25_val, pm10_val, no2_val]
