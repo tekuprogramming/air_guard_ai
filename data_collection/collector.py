@@ -4,14 +4,15 @@ from datetime import datetime
 import os
 import requests
 import numpy as np
-
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class AirCollector:
     def __init__(self, city="Prague", country="CZ"):
         self.city = city
         self.country = country
-        self.own_api_key = "3eaab97ed540e25e7b261d686d5dfc42"
-        self.iqair_api_key = "773eb493-2ae7-4825-a6d3-02cbe54b09f0"
+        self.ow_api_key = os.getenv("OPENWEATHER_API_KEY")
+        self.iqair_api_key = os.getenv("IQAIR_API_KEY")
         self.data_file = "historical_data.csv"
 
     def get_weather_data(self):
@@ -122,22 +123,12 @@ class AirCollector:
             return False
 
     def run_continue(self, interval_minutes=1):
-        print("=" * 60)
-        print(f"Air Quality Collector - Prague")
-        print(f"Weather: OpenWeatherMap")
-        print(f"Air Quality: IQAir (with PM10 calculation)")
-        print(f"Interval: {interval_minutes} minutes")
-        print("=" * 60)
-
-        while True:
-            success = self.collect_and_save()
-            if success:
-                print(f"Next collection in {interval_minutes} minutes")
+        try:
+            while True:
+                self.collect_and_save()
                 time.sleep(interval_minutes * 60)
-            else:
-                print(f"Retrying in 5 minutes")
-                time.sleep(300)
-
+        except KeyboardInterrupt:
+            print("Stopped safely")
 
 if __name__ == "__main__":
     collector = AirCollector()
