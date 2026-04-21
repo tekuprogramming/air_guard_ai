@@ -114,18 +114,18 @@ class AirGuardApp:
 
     # calculates the category of air quality by PM2.5
     def calculate_aqi_category(self, pm25):
-        if pm25 <= 12:
-            return "good"
-        elif pm25 <= 35:
-            return "moderate"
-        elif pm25 <= 55:
-            return "unhealthy_sensitive"
-        elif pm25 <= 150:
-            return "unhealthy"
-        elif pm25 is None:
-            return "unknown"
-        else:
-            return "hazardous"
+         if pm25 is None:
+             return "unknown"
+         elif pm25 <= 12:
+             return "good"
+         elif pm25 <= 35:
+             return "moderate"
+         elif pm25 <= 55:
+             return "unhealthy_sensitive"
+         elif pm25 <= 150:
+             return "unhealthy"
+         else:
+             return "hazardous"
 
     # getting current data from API
     def fetch_current_data(self):
@@ -238,12 +238,10 @@ class AirGuardApp:
 
     # encoding weather type for model
     def encode_weather(self, weather_main):
-        weather_main = weather_main.lower()
-        weather_codes = {
-            "clear": 0, "clouds": 1, "rain": 2, "drizzle": 3,
-            "thunderstorm": 4, "snow": 5, "mist": 6, "fog": 7, "haze": 8
-        }
-        return weather_codes.get(weather_main, 0)
+        try:
+            return self.predictor.label_encoder.transform([weather_main])[0]
+        except Exception:
+            return 0
 
     # checking if the date is a holiday
     def is_czech_holiday(self, date):
