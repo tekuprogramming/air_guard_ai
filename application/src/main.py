@@ -228,9 +228,6 @@ class AirGuardApp:
             "day_cos": np.cos(2 * np.pi * self.current_data.get("day_of_week", 0) / 7),
             "weather_main_encoded": self.encode_weather(self.current_data.get("weather_main", "Clear")),
             "is_weekend": self.current_data.get("is_weekend", 0),
-            "is_czech_holiday": self.is_czech_holiday(datetime.now()),
-            "heating_season": 1 if datetime.now().month in [10, 11, 12, 1, 2, 3, 4] else 0,
-            "rush_hour": self.is_rush_hour(datetime.now()),
             "pm25": self.current_data.get("pm25", 0),
             "pm10": self.current_data.get("pm10", 0)
         }
