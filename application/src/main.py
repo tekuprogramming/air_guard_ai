@@ -71,46 +71,49 @@ class AirGuardApp:
         print("Historical data not found. Creating demo data")
         return self.create_demo_data()
 
-    def create_demo_data(self):
-        # creating 168 records (week)
-        dates = [datetime.now() - timedelta(hours=i) for i in range(168, 0, -1)]
+    def _get_rush_factor(self, dt):
+        hour = dt.hour
+        is_weekend = dt.weekday() >= 5
+        if not is_weekend and (7 <= hour <= 9 or 16 <= hour <= 19):
+            return 1.5
+        return 1.0
 
-        # generating data with realistic patterns
+    def _get_season_factor(self, dt):
+        return 1.3 if dt.month in [11, 12, 1, 2] else 1.0
+    
+    def create_demo_data(self):
+        dates = [datetime.now() - timedelta(hours=i) for i in range(168, 0, -1)]
         np.random.seed(42)
+
         data = []
         for dt in dates:
-            hour = dt.hour
-            is_weekend = 1 if dt.weekday() >= 5 else 0
+            rush = self._get_rush_factor(dt)
+            season = self._get_season_factor(dt)
 
-            # morning and evening rush in week days
-            rush_factor = 1.0
-            if not is_weekend and (7 <= hour <= 9 or 16 <= hour <= 19):
-                rush_factor = 1.5
+            base_pm25 = 20 * season * rush
+            base_pm10 = 30 * season * rush
 
-            # pollution higher in winter
-            month = dt.month
-            season_factor = 1.3 if month in [11, 12, 1, 2] else 1.0
-            base_pm25 = 20 * season_factor * rush_factor
-            base_pm10 = 30 * season_factor * rush_factor
-            record = {
+            data.append({
                 "timestamp": dt.isoformat(),
                 "date": dt.date().isoformat(),
-                "hour": hour,
+                "hour": dt.hour,
                 "day_of_week": dt.weekday(),
-                "is_weekend": is_weekend,
-                "temperature": 10 + 5 * np.sin(hour * np.pi / 12) + np.random.normal(0, 2),
+                "is_weekend": dt.weekday() >= 5,
+
+                "temperature": 10 + 5 * np.sin(dt.hour * np.pi / 12) + np.random.normal(0, 2),
                 "humidity": 70 + 10 * np.random.randn(),
                 "pressure": 1013 + 5 * np.random.randn(),
                 "wind_speed": 3 + np.random.exponential(1),
                 "clouds": 50 + 20 * np.random.randn(),
+
                 "pm25": max(0, base_pm25 + np.random.normal(0, 5)),
                 "pm10": max(0, base_pm10 + np.random.normal(0, 8)),
+
                 "aqi_category": self.calculate_aqi_category(base_pm25)
-            }
-            data.append(record)
-        df = pd.DataFrame(data)
-        print(f"Created {len(df)} records of demo data")
-        return df
+            })
+
+            print(f"Created {len(data)} records of demo data")
+            return pd.DataFrame(data)
 
     # calculates the category of air quality by PM2.5
     def calculate_aqi_category(self, pm25):
