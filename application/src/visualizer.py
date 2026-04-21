@@ -358,71 +358,61 @@ class AirQualityVisualizer:
 
     # comparison of current values with the norm
     def plot_comparison_with_norms(self, data, norms=None):
-        if norms is None:
-            norms = {
-                'PM2.5': {'who': 25},
-                'PM10': {'who': 50},
-                'NO2': {'who': 40}
-            }
+        norms = norms or {
+            'PM2.5': {'who': 25},
+            'PM10': {'who': 50},
+            'NO2': {'who': 40}
+        }
 
         fig, ax = plt.subplots(figsize=(10, 6))
+
+        values = {
+            'PM2.5': data.get('pm25') or 0,
+            'PM10': data.get('pm10') or 0,
+            'NO2': data.get('no2') or 0
+        }
 
         pollutants = []
         current_values = []
         who_norms = []
         colors = []
 
-        # Get values with None handling
-        pm25_val = data.get('pm25')
-        pm10_val = data.get('pm10')
-        no2_val = data.get('no2')
-
-        pm25_val = pm25_val if pm25_val is not None else 0
-        pm10_val = pm10_val if pm10_val is not None else 0
-        no2_val = no2_val if no2_val is not None else 0
-
-        for pollutant, value in [('PM2.5', pm25_val),
-                                 ('PM10', pm10_val),
-                                 ('NO2', no2_val)]:
-            if value > 0:
-                pollutants.append(pollutant)
-                current_values.append(value)
-                who_norms.append(norms[pollutant]['who'])
-                colors.append("red" if value > norms[pollutant]['who'] else "green")
+        for p, v in values.items():
+            if v > 0:
+                pollutants.append(p)
+                current_values.append(v)
+                norm = norms[p]['who']
+                who_norms.append(norm)
+                colors.append("red" if v > norm else "green")
 
         if not pollutants:
-            ax.text(0.5, 0.5, "No pollutant data available", ha='center', va='center', transform=ax.transAxes)
+            ax.text(0.5, 0.5, "No pollutant data available",
+                    ha='center', va='center', transform=ax.transAxes)
         else:
             x = np.arange(len(pollutants))
             width = 0.35
 
-            bars1 = ax.bar(x - width / 2, current_values, width, label="Current values",
-                           color=colors, edgecolor="black")
-            bars2 = ax.bar(x + width / 2, who_norms, width, label="WHO norms",
-                           color="gray", alpha=0.5, edgecolor="black")
+            bars1 = ax.bar(x - width/2, current_values, width,
+                           label="Current values", color=colors, edgecolor="black")
+            bars2 = ax.bar(x + width/2, who_norms, width,
+                           label="WHO norms", color="gray", alpha=0.5, edgecolor="black")
 
             ax.set_xlabel("Pollutant")
             ax.set_ylabel("Concentration (μg/m³)")
-            ax.set_title("Comparison of current values with WHO norms")
+            ax.set_title("Comparison with WHO norms")
             ax.set_xticks(x)
             ax.set_xticklabels(pollutants)
             ax.legend()
-
-            for bar in bars1:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width() / 2., height, f"{height:.1f}",
-                        ha="center", va="bottom", fontsize=9)
-            for bar in bars2:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width() / 2., height, f"{height:.1f}",
-                        ha="center", va="bottom", fontsize=9)
-
             ax.grid(True, alpha=0.3, axis="y")
 
-        try:
-            plt.tight_layout()
-        except:
-            plt.subplots_adjust()
+            for bars in (bars1, bars2):
+                for bar in bars:
+                    ax.text(bar.get_x() + bar.get_width()/2,
+                            bar.get_height(),
+                            f"{bar.get_height():.1f}",
+                            ha="center", va="bottom", fontsize=9)
+
+        plt.tight_layout()
 
         filename = self.output_dir / f'comparison_norms_{datetime.now().strftime("%Y%m%d_%H%M%S")}.png'
         plt.savefig(filename, dpi=100, bbox_inches="tight")
