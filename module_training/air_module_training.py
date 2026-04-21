@@ -63,7 +63,6 @@ if 'aqi_category' in df.columns:
     if all(val in ['Unknown', 'unknown', None] for val in unique_vals) or df['aqi_category'].isna().all():
         print("\nEmpty aqi_category values were found. Filling in based on pm25...")
 
-
         def calc_cat(pm25):
             if pd.isna(pm25) or pm25 is None:
                 return "unknown"
@@ -185,7 +184,7 @@ df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"])
 df_clean = df_clean.sort_values("timestamp")
 
 # target variable (quality category for the next hour)
-df_clean["aqi_category_next"] = df_clean["aqi_category"].shift(-1)
+df_clean["aqi_category_next"] = df_clean["aqi_category"].shift(-60)
 print("Target variable created: aqi_category_next")
 
 # deleting the last row
