@@ -181,6 +181,7 @@ print("Engineering signs")
 print("-" * 40)
 
 # time sorting
+df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"])
 df_clean = df_clean.sort_values("timestamp")
 
 # target variable (quality category for the next hour)
@@ -191,7 +192,7 @@ print("Target variable created: aqi_category_next")
 df_clean = df_clean.iloc[:-1]
 
 # Remove rows with NaN in target variable
-df_clean = df_clean.dropna(subset=['aqi_category_next'])
+df_clean = df_clean.dropna(subset=['pm25'])
 
 # coding category signs
 label_encoder = LabelEncoder()
