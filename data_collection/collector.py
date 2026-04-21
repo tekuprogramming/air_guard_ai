@@ -23,14 +23,18 @@ class AirCollector:
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
+            main = data.get("main", {})
+            wind = data.get("wind", {})
+            weather = data.get("weather", [{}])
+            clouds = data.get("clouds", {})
             weather_data = {
-                "temperature": float(data.get("main", {}).get("temp")),
-                "humidity": float(data["main"]["humidity"]),
-                "pressure": float(data["main"]["pressure"]),
-                "wind_speed": float(data["wind"]["speed"]),
-                "wind_deg": float(data["wind"].get("deg", 0)),
-                "weather_main": str(data["weather"][0]["main"]),
-                "clouds": float(data["clouds"]["all"])
+                "temperature": float(main.get("temp", 0)),
+                "humidity": float(main.get("humidity", 0)),
+                "pressure": float(main.get("pressure", 0)),
+                "wind_speed": float(wind.get("speed", 0)),
+                "wind_deg": float(wind.get("deg", 0)),
+                "weather_main": str(weather[0].get("main", "unknown")),
+                "clouds": float(clouds.get("all", 0))
             }
             return weather_data
         except Exception as e:
@@ -41,29 +45,27 @@ class AirCollector:
         try:
             url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
             response = requests.get(url, timeout=15)
+            response.raise_for_status()
             data = response.json()
 
             if data.get("status") == "success":
-                pollution_data = data["data"]["current"]["pollution"]
+                pollution = data["data"]["current"]["pollution"]
 
-                pm25 = pollution_data.get("aqius")
-                if pm25 is not None:
-                    pm25 = float(pm25)
+                aqi_us = pollution.get("aqius")
 
-                pm10 = pollution_data.get("aqipc")
-                if pm10 is not None:
-                    pm10 = float(pm10)
+                logging.info("AQI US=%s", aqi_us)
 
-                print(f"IQAir: PM2.5={pm25}, PM10={pm10}")
-                return {"pm25": pm25, "pm10": pm10}
-            else:
-                error_msg = data.get("data", {}).get("message", "Unknown")
-                print(f"IQAir error: {error_msg}")
-                return {"pm25": None, "pm10": None}
-
+                return {
+                    "aqi_us": float(aqi_us) if aqi_us is not None else None,
+                    "pm25": None,
+                    "pm10": None
+                }
+                
+            return {"aqi_us": None, "pm25": None, "pm10": None}
+        
         except Exception as e:
-            print(f"IQAir exception: {e}")
-            return {"pm25": None, "pm10": None}
+            logging.error("IQAir error: %s", e)
+            return {"aqi_us": None, "pm25": None, "pm10": None}
 
     def calculate_aqi_category(self, pm25):
         if pm25 is None:
@@ -85,12 +87,7 @@ class AirCollector:
         air_quality = self.get_air_quality_data()
 
         if weather and air_quality:
-            pm25 = air_quality.get("pm25")
-            pm10 = air_quality.get("pm10")
-
-            if pm25 is None:
-                print(f"No PM2.5 data, skipping...")
-                return False
+            aqi = air_quality.get("aqi_us")
 
             record = {
                 "timestamp": str(timestamp.isoformat()),
@@ -105,8 +102,9 @@ class AirCollector:
                 "wind_deg": float(weather["wind_deg"]),
                 "weather_main": str(weather["weather_main"]),
                 "clouds": float(weather["clouds"]),
-                "pm25": float(pm25),
-                "pm10": float(pm10),
+                "aqi_us": float(aqi) if aqi is not None else None,
+                "pm25": None,
+                "pm10": None,
                 "aqi_category": str(self.calculate_aqi_category(pm25))
             }
 
