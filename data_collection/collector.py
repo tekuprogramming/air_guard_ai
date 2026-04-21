@@ -11,17 +11,20 @@ class AirCollector:
     def __init__(self, city="Prague", country="CZ"):
         self.city = city
         self.country = country
-        self.ow_api_key = os.getenv("OPENWEATHER_API_KEY")
+        self.own_api_key = os.getenv("OPENWEATHER_API_KEY")
         self.iqair_api_key = os.getenv("IQAIR_API_KEY")
+        if not self.own_api_key or not self.iqair_api_key:
+            raise ValueError("Missing API keys in environment variables")
         self.data_file = "historical_data.csv"
 
     def get_weather_data(self):
         url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city},{self.country}&appid={self.own_api_key}&units=metric"
         try:
             response = requests.get(url, timeout=10)
+            response.raise_for_status()
             data = response.json()
             weather_data = {
-                "temperature": float(data["main"]["temp"]),
+                "temperature": float(data.get("main", {}).get("temp")),
                 "humidity": float(data["main"]["humidity"]),
                 "pressure": float(data["main"]["pressure"]),
                 "wind_speed": float(data["wind"]["speed"]),
