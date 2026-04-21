@@ -62,7 +62,7 @@ class AirCollector:
         
         except Exception as e:
             logging.error("IQAir error: %s", e)
-            return {"aqi_us": None}
+            return {"aqi_us": None, "pm25": None, "pm10": None}
 
     def calculate_aqi_category(self, aqi):
         if aqi is None:
@@ -87,7 +87,7 @@ class AirCollector:
             logging.warning("Skipping cycle due to missing data")
             return False
 
-        aqi = air_quality.get("aqi_us")
+        aqi = self.validate_aqi(air_quality.get("aqi_us"))
 
         record = {
             "timestamp": str(timestamp.isoformat()),
@@ -127,6 +127,21 @@ class AirCollector:
                 time.sleep(interval_minutes * 60)
         except KeyboardInterrupt:
             print("Stopped safely")
+
+    def validate_aqi(self, aqi):
+        if aqi is None:
+            return None
+        try:
+            aqi = float(aqi)
+        except (ValueError, TypeError):
+            logging.warning(f"AQI není číslo: {aqi}")
+            return None
+
+        if 0 <= aqi <= 500:
+            return aqi
+
+        logging.warning(f"Suspicious AQI value: {aqi}")
+        return None
 
 if __name__ == "__main__":
     collector = AirCollector()
