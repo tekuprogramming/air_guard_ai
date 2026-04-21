@@ -184,14 +184,14 @@ df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"])
 df_clean = df_clean.sort_values("timestamp")
 
 # target variable (quality category for the next hour)
-df_clean["aqi_category_next"] = df_clean["aqi_category"].shift(-60)
+df_clean["aqi_category_next"] = df_clean["aqi_category"].shift(-1)
 print("Target variable created: aqi_category_next")
 
 # deleting the last row
 df_clean = df_clean.iloc[:-1]
 
 # Remove rows with NaN in target variable
-df_clean = df_clean.dropna(subset=['pm25'])
+df_clean = df_clean.dropna(subset=['pm25', 'pm10', 'aqi_category_next'])
 
 # coding category signs
 label_encoder = LabelEncoder()
@@ -206,7 +206,7 @@ df_clean["day_cos"] = np.cos(2 * np.pi * df_clean["day_of_week"] / 7)
 # choosing features for models
 features = ["temperature", "humidity", "pressure", "wind_speed", "clouds",
             "hour_sin", "hour_cos", "day_sin", "day_cos",
-            "weather_main_encoded", "is_weekend", "pm25", "pm10"]
+            "weather_main_encoded", "is_weekend"]
 x = df_clean[features]
 y = df_clean["aqi_category_next"]
 
