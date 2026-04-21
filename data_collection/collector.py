@@ -85,42 +85,43 @@ class AirCollector:
         timestamp = datetime.now()
         weather = self.get_weather_data()
         air_quality = self.get_air_quality_data()
-
+        
         if weather is None or air_quality is None:
             logging.warning("Skipping cycle due to missing data")
             return False
 
-            record = {
-                "timestamp": str(timestamp.isoformat()),
-                "date": str(timestamp.date().isoformat()),
-                "hour": int(timestamp.hour),
-                "day_of_week": int(timestamp.weekday()),
-                "is_weekend": int(1 if timestamp.weekday() >= 5 else 0),
-                "temperature": float(weather["temperature"]),
-                "humidity": float(weather["humidity"]),
-                "pressure": float(weather["pressure"]),
-                "wind_speed": float(weather["wind_speed"]),
-                "wind_deg": float(weather["wind_deg"]),
-                "weather_main": str(weather["weather_main"]),
-                "clouds": float(weather["clouds"]),
-                "aqi_us": float(aqi) if aqi is not None else None,
-                "aqi_category": str(self.calculate_aqi_category(aqi))
-            }
+        aqi = air_quality.get("aqi_us")
 
-            df = pd.DataFrame([record])
+        record = {
+            "timestamp": str(timestamp.isoformat()),
+            "date": str(timestamp.date().isoformat()),
+            "hour": int(timestamp.hour),
+            "day_of_week": int(timestamp.weekday()),
+            "is_weekend": int(1 if timestamp.weekday() >= 5 else 0),
 
-            if not os.path.exists(self.data_file) or os.path.getsize(self.data_file) == 0:
-                df.to_csv(self.data_file, index=False)
-                print(f"New file created: {self.data_file}")
-            else:
-                df.to_csv(self.data_file, mode="a", header=False, index=False)
-                print(f"Data appended: {self.data_file}")
+            "temperature": float(weather["temperature"]),
+            "humidity": float(weather["humidity"]),
+            "pressure": float(weather["pressure"]),
+            "wind_speed": float(weather["wind_speed"]),
+            "wind_deg": float(weather["wind_deg"]),
+            "weather_main": str(weather["weather_main"]),
+            "clouds": float(weather["clouds"]),
 
-            print(f"Saved: AQI={aqi}, Category={record['aqi_category']}")
-            return True
+            "aqi_us": float(aqi) if aqi is not None else None,
+            "aqi_category": str(self.calculate_aqi_category(aqi))
+        }
+
+        df = pd.DataFrame([record])
+
+        if not os.path.exists(self.data_file) or os.path.getsize(self.data_file) == 0:
+            df.to_csv(self.data_file, index=False)
+            print(f"New file created: {self.data_file}")
         else:
-            print(f"Missing data, skipping...")
-            return False
+            df.to_csv(self.data_file, mode="a", header=False, index=False)
+            print(f"Data appended: {self.data_file}")
+
+        print(f"Saved: AQI={aqi}, Category={record['aqi_category']}")
+        return True
 
     def run_continue(self, interval_minutes=1):
         try:
