@@ -38,12 +38,10 @@ class AirQualityPredictor:
         x = np.array(feature_vector).reshape(1, -1)
         x_scaled = self.scaler.transform(x)
 
-        # prediction
-        prediction_idx = self.model.predict(x_scaled)[0]
+        prediction_label = self.model.predict(x_scaled)[0]
         probabilities = self.model.predict_proba(x_scaled)[0]
 
-        # changing index into category
-        category = self.classes[prediction_idx]
+        category = prediction_label
         confidence = np.max(probabilities)
         
         return {
