@@ -130,61 +130,68 @@ class AirGuardApp:
          else:
              return "hazardous"
 
+    def get_weather(self):
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city},{self.country}&appid={self.api_key}&units=metric"
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            raise Exception(r.json().get("message", "Weather API error"))
+        return r.json()
+
+    def get_air_quality(self):
+        url = f"https://api.openaq.org/v2/latest?city={self.city}&parameter=pm25&parameter=pm10"
+        r = requests.get(url, timeout=10)
+        data = r.json()
+
+        pm25, pm10 = None, None
+        for result in data.get("results", []):
+            for m in result.get("measurements", []):
+                if m["parameter"] == "pm25":
+                    pm25 = m["value"]
+                elif m["parameter"] == "pm10":
+                    pm10 = m["value"]
+
+         return pm25, pm10
+    
     # getting current data from API
     def fetch_current_data(self):
         if not self.api_key:
-            print("API key not found. Using most recent historic data")
+            print("API key not found. Using historic data")
             return self.get_last_historical_data()
+
         try:
-            # getting weather
-            weather_url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city},{self.country}&appid={self.api_key}&units=metric"
-            weather_response = requests.get(weather_url, timeout=10)
-            weather_data = weather_response.json()
-            if weather_response.status_code != 200:
-                print(f"API weather error: {weather_data.get('message', 'Unknown error')}")
-                return self.get_last_historical_data()
+            weather = self.get_weather()
+            pm25, pm10 = self.get_air_quality()
 
-            pm25 = None
-            pm10 = None
-            try:
-                air_url = f"https://api.openaq.org/v2/latest?city={self.city}&parameter=pm25&parameter=pm10"
-                air_response = requests.get(air_url, timeout=10)
-                air_data = air_response.json()
-                for result in air_data.get("results", []):
-                    for measurement in result.get("measurements", []):
-                        if measurement["parameter"] == "pm25":
-                            pm25 = measurement["value"]
-                        elif measurement["parameter"] == "pm10":
-                            pm10 = measurement["value"]
-            except:
-                print("Couldn't get air quality data")
+            now = datetime.now()
 
-            # forming current data
             self.current_data = {
-                "timestamp": datetime.now().isoformat(),
-                "date": datetime.now().date().isoformat(),
-                "hour": datetime.now().hour,
-                "day_of_week": datetime.now().weekday(),
-                "is_weekend": 1 if datetime.now().weekday() >= 5 else 0,
-                "temperature": weather_data["main"]["temp"],
-                "feels_like": weather_data["main"]["feels_like"],
-                "humidity": weather_data["main"]["humidity"],
-                "pressure": weather_data["main"]["pressure"],
-                "wind_speed": weather_data["wind"]["speed"],
-                "wind_deg": weather_data["wind"].get("deg", 0),
-                "weather_main": weather_data["weather"][0]["main"],
-                "weather_desc": weather_data["weather"][0]["description"],
-                "clouds": weather_data["clouds"]["all"],
+                "timestamp": now.isoformat(),
+                "date": now.date().isoformat(),
+                "hour": now.hour,
+                "day_of_week": now.weekday(),
+                "is_weekend": 1 if now.weekday() >= 5 else 0,
+
+                "temperature": weather["main"]["temp"],
+                "feels_like": weather["main"]["feels_like"],
+                "humidity": weather["main"]["humidity"],
+                "pressure": weather["main"]["pressure"],
+                "wind_speed": weather["wind"]["speed"],
+                "wind_deg": weather["wind"].get("deg", 0),
+                "weather_main": weather["weather"][0]["main"],
+                "weather_desc": weather["weather"][0]["description"],
+                "clouds": weather["clouds"]["all"],
+
                 "pm25": pm25,
                 "pm10": pm10,
                 "no2": 0,
-                "aqi_category": self.calculate_aqi_category(pm25) if pm25 is not None else "unknown"
+                "aqi_category": self.calculate_aqi_category(pm25) if pm25 else "unknown"
             }
+
             print("Successfully received data from API")
             return self.current_data
 
         except Exception as e:
-            print(f"Couldn't get air quality data: {e}")
+            print(f"Error: {e}")
             return self.get_last_historical_data()
 
     # getting the last record from historical data
@@ -307,44 +314,51 @@ class AirGuardApp:
         print("7. Exit")
         print("-" * 60)
 
-    # shows current prediction
-    def show_current_prediction(self):
-        print("\n" + "=" * 60)
-        print("Current air quality prediction")
-        print("=" * 60)
+    def get_header(self, title):
+        return "\n" + "=" * 60 + f"\n{title}\n" + "=" * 60
 
-        # getting current data
-        if self.current_data is None:
-            self.fetch_current_data()
-
-        # making a prediction
-        prediction = self.make_prediction()
-
-        # printing information
+    def print_current_data(self):
         print(f"\nLocation: {self.city}, {self.country}")
         print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-        print("\nWeather now: ")
+
+        print("\nWeather now:")
         print(f"Temperature: {self.current_data.get('temperature', 'N/A')}°C")
         print(f"Humidity: {self.current_data.get('humidity', 'N/A')}%")
         print(f"Wind: {self.current_data.get('wind_speed', 'N/A')}m/s")
         print(f"Pressure: {self.current_data.get('pressure', 'N/A')}hPa")
-        print(f"\nPollution: ")
+
+        print("\nPollution:")
         print(f"PM2.5: {self.current_data.get('pm25', 'N/A')}μg/m³")
         print(f"PM10: {self.current_data.get('pm10', 'N/A')}μg/m³")
-        print("\nModel prediction: ")
+
+    def print_prediction(self, prediction):
+        print("\nModel prediction:")
         print(f"Category: {prediction['category'].upper()}")
         print(f"Confidence: {prediction['confidence'] * 100:.1f}%")
-        print("\nRecommendation: ")
+
         rec = self.get_recommendation(prediction["category"])
-        print(rec['en'])
+        print("\nRecommendation:")
+        print(rec["en"])
 
         if "probabilities" in prediction:
             print("\nProbability distribution")
             for cat, prob in prediction["probabilities"].items():
-                bar = '[]' * int(prob * 20)
+                bar = "[]" * int(prob * 20)
                 print(f"{cat:20} {bar} {prob*100:.1f}%")
+    
+    # shows current prediction
+    def show_current_prediction(self):
+        print(self.get_header("Current air quality prediction"))
 
-        self.visualizer.plot_current_metrics(self.current_data)
+        if self.current_data is None:
+            self.fetch_current_data()
+
+         prediction = self.make_prediction()
+
+         self.print_current_data()
+         self.print_prediction(prediction)
+
+         self.visualizer.plot_current_metrics(self.current_data)
 
     # shows 24h trend graph
     def show_trend_chart(self):
