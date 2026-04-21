@@ -3,7 +3,6 @@ import time
 from datetime import datetime
 import os
 import requests
-import numpy as np
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -56,9 +55,7 @@ class AirCollector:
                 logging.info("AQI US=%s", aqi_us)
 
                 return {
-                    "aqi_us": float(aqi_us) if aqi_us is not None else None,
-                    "pm25": None,
-                    "pm10": None
+                    "aqi_us": float(aqi_us) if aqi_us is not None else None
                 }
                 
             return {"aqi_us": None, "pm25": None, "pm10": None}
@@ -107,7 +104,7 @@ class AirCollector:
             "weather_main": str(weather["weather_main"]),
             "clouds": float(weather["clouds"]),
 
-            "aqi_us": float(aqi) if aqi is not None else None,
+            "aqi_us": aqi,
             "aqi_category": str(self.calculate_aqi_category(aqi))
         }
 
