@@ -86,8 +86,9 @@ class AirCollector:
         weather = self.get_weather_data()
         air_quality = self.get_air_quality_data()
 
-        if weather and air_quality:
-            aqi = air_quality.get("aqi_us")
+        if weather is None or air_quality is None:
+            logging.warning("Skipping cycle due to missing data")
+            return False
 
             record = {
                 "timestamp": str(timestamp.isoformat()),
