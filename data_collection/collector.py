@@ -67,16 +67,16 @@ class AirCollector:
             logging.error("IQAir error: %s", e)
             return {"aqi_us": None, "pm25": None, "pm10": None}
 
-    def calculate_aqi_category(self, pm25):
-        if pm25 is None:
+    def calculate_aqi_category(self, aqi):
+        if aqi is None:
             return "unknown"
-        elif pm25 <= 12:
+        elif aqi <= 50:
             return "good"
-        elif pm25 <= 35:
+        elif aqi <= 100:
             return "moderate"
-        elif pm25 <= 55:
+        elif aqi <= 150:
             return "unhealthy_sensitive"
-        elif pm25 <= 150:
+        elif aqi <= 200:
             return "unhealthy"
         else:
             return "hazardous"
@@ -103,9 +103,7 @@ class AirCollector:
                 "weather_main": str(weather["weather_main"]),
                 "clouds": float(weather["clouds"]),
                 "aqi_us": float(aqi) if aqi is not None else None,
-                "pm25": None,
-                "pm10": None,
-                "aqi_category": str(self.calculate_aqi_category(pm25))
+                "aqi_category": str(self.calculate_aqi_category(aqi))
             }
 
             df = pd.DataFrame([record])
@@ -117,7 +115,7 @@ class AirCollector:
                 df.to_csv(self.data_file, mode="a", header=False, index=False)
                 print(f"Data appended: {self.data_file}")
 
-            print(f"Saved: PM2.5={pm25}, PM10={pm10}, Category={record['aqi_category']}")
+            print(f"Saved: AQI={aqi}, Category={record['aqi_category']}")
             return True
         else:
             print(f"Missing data, skipping...")
