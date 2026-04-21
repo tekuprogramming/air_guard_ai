@@ -36,6 +36,10 @@ class AirQualityVisualizer:
         # creating folder for graph
         self.output_dir.mkdir(exist_ok=True)
 
+    def _safe(self, data, key, default=0):
+        val = data.get(key)
+        return val if val is not None else default
+
     def _create_gauge_chart(self, ax, value, category, max_value=300):
         # colours for categories
         colours = ['#00E400', '#FFFF00', '#FF7E00', '#FF0000', '#8F3F97']
@@ -102,9 +106,9 @@ class AirQualityVisualizer:
         pollutants = ["PM2.5", "PM10", "NO2"]
 
         # Get values and replace None with 0
-        pm25_val = data.get("pm25")
-        pm10_val = data.get("pm10")
-        no2_val = data.get("no2")
+        pm25_val = self._safe(data, "pm25")
+        pm10_val = self._safe(data, "pm10")
+        no2_val = self._safe(data, "no2")
 
         pm25_val = pm25_val if pm25_val is not None else 0
         pm10_val = pm10_val if pm10_val is not None else 0
@@ -164,7 +168,7 @@ class AirQualityVisualizer:
         # saving
         filename = self.output_dir / f"current_metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         plt.savefig(filename, dpi=100, bbox_inches="tight")
-        plt.show()
+        plt.close(fig)
         return filename
 
     def plot_24h_trend(self, df, title="24h air quality trend"):
@@ -620,7 +624,6 @@ def plot_trend(df):
 def plot_weekly(df):
     vis = AirQualityVisualizer()
     return vis.plot_weekly_stats(df)
-
 
 if __name__ == "__main__":
     print("Testing visualizer")
