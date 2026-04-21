@@ -78,44 +78,55 @@ class AirCollector:
         else:
             return "hazardous"
 
+    def _safe_float(self, value):
+        return float(value) if value is not None else None
+
+    def _build_record(self, timestamp, weather, aqi):
+        return {
+            "timestamp": timestamp.isoformat(),
+            "date": timestamp.date().isoformat(),
+            "hour": timestamp.hour,
+            "day_of_week": timestamp.weekday(),
+            "is_weekend": int(timestamp.weekday() >= 5),
+
+            "temperature": self._safe_float(weather["temperature"]),
+            "humidity": self._safe_float(weather["humidity"]),
+            "pressure": self._safe_float(weather["pressure"]),
+            "wind_speed": self._safe_float(weather["wind_speed"]),
+            "wind_deg": self._safe_float(weather["wind_deg"]),
+            "weather_main": weather["weather_main"],
+            "clouds": self._safe_float(weather["clouds"]),
+
+            "aqi_us": self._safe_float(aqi),
+            "aqi_category": self.calculate_aqi_category(aqi)
+        }
+
+    def _save_record(self, df):
+        file_exists = os.path.exists(self.data_file) and os.path.getsize(self.data_file) > 0
+
+        df.to_csv(
+            self.data_file,
+            mode="a" if file_exists else "w",
+            header=not file_exists,
+            index=False
+        )
+    
     def collect_and_save(self):
         timestamp = datetime.now()
+
         weather = self.get_weather_data()
         air_quality = self.get_air_quality_data()
-        
+
         if weather is None or air_quality is None:
             logging.warning("Skipping cycle due to missing data")
             return False
 
         aqi = self.validate_aqi(air_quality.get("aqi_us"))
 
-        record = {
-            "timestamp": str(timestamp.isoformat()),
-            "date": str(timestamp.date().isoformat()),
-            "hour": int(timestamp.hour),
-            "day_of_week": int(timestamp.weekday()),
-            "is_weekend": int(1 if timestamp.weekday() >= 5 else 0),
-
-            "temperature": float(weather["temperature"]),
-            "humidity": float(weather["humidity"]),
-            "pressure": float(weather["pressure"]),
-            "wind_speed": float(weather["wind_speed"]),
-            "wind_deg": float(weather["wind_deg"]),
-            "weather_main": str(weather["weather_main"]),
-            "clouds": float(weather["clouds"]),
-
-            "aqi_us": float(aqi) if aqi is not None else None,
-            "aqi_category": self.calculate_aqi_category(aqi)
-        }
-
+        record = self._build_record(timestamp, weather, aqi)
         df = pd.DataFrame([record])
 
-        if not os.path.exists(self.data_file) or os.path.getsize(self.data_file) == 0:
-            df.to_csv(self.data_file, index=False)
-            print(f"New file created: {self.data_file}")
-        else:
-            df.to_csv(self.data_file, mode="a", header=False, index=False)
-            print(f"Data appended: {self.data_file}")
+        self._save_record(df)
 
         print(f"Saved: AQI={aqi}, Category={record['aqi_category']}")
         return True
