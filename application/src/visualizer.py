@@ -92,11 +92,11 @@ class AirQualityVisualizer:
                 "unhealthy": 200,
                 "hazardous": 300
             }
-        value = category_map.get(data["aqi_category"], 100)
-        self._create_gauge_chart(ax1, value, data["aqi_category"])
+            value = category_map.get(data["aqi_category"], 100)
+            self._create_gauge_chart(ax1, value, data["aqi_category"])
         else:
-        ax1.text(0.5, 0.5, "AQI data\nnot available", ha="center", va="center", transform=ax1.transAxes)
-        ax1.axis("off")
+            ax1.text(0.5, 0.5, "AQI data\nnot available", ha="center", va="center", transform=ax1.transAxes)
+            ax1.axis("off")
 
         # primary polluters - with None handling
         pollutants = ["PM2.5", "PM10", "NO2"]
