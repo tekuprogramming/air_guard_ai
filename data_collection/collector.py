@@ -62,7 +62,7 @@ class AirCollector:
         
         except Exception as e:
             logging.error("IQAir error: %s", e)
-            return {"aqi_us": None, "pm25": None, "pm10": None}
+            return {"aqi_us": None}
 
     def calculate_aqi_category(self, aqi):
         if aqi is None:
@@ -104,8 +104,8 @@ class AirCollector:
             "weather_main": str(weather["weather_main"]),
             "clouds": float(weather["clouds"]),
 
-            "aqi_us": aqi,
-            "aqi_category": str(self.calculate_aqi_category(aqi))
+            "aqi_us": float(aqi) if aqi is not None else None,
+            "aqi_category": self.calculate_aqi_category(aqi)
         }
 
         df = pd.DataFrame([record])
