@@ -162,6 +162,87 @@ module_training/visualizations
 
 ---
 
+## 📊 Data Sources and Data Collection
+
+### Data Origin
+
+The dataset used for training the air quality prediction model is collected in real time using external public APIs:
+
+* **Weather data** is obtained from the **OpenWeatherMap API**
+* **Air quality data (AQI)** is obtained from the **IQAir API**
+
+### Data Collection Process
+
+Data is collected using the script:
+
+```
+data_collection/collector.py
+```
+
+This script periodically retrieves:
+
+* Temperature
+* Humidity
+* Pressure
+* Wind speed and direction
+* Cloud coverage
+* AQI (Air Quality Index)
+
+Each record is timestamped and stored in a CSV file:
+
+```
+historical_data.csv
+```
+
+### Data Structure
+
+Each row in the dataset represents one measurement at a specific time and contains:
+
+* Time features:
+
+  * `timestamp`
+  * `date`
+  * `hour`
+  * `day_of_week`
+  * `is_weekend`
+
+* Weather features:
+
+  * `temperature`
+  * `humidity`
+  * `pressure`
+  * `wind_speed`
+  * `wind_deg`
+  * `weather_main`
+  * `clouds`
+
+* Air quality:
+
+  * `aqi_us`
+  * `aqi_category`
+
+### Data Preprocessing
+
+Before training, the data undergoes several preprocessing steps:
+
+* Removal of missing values (especially for PM2.5 and PM10 if available)
+* Filtering unrealistic values (e.g. temperature range, pollutant limits)
+* Interpolation of missing numeric values
+* Encoding categorical variables (`weather_main`)
+* Creation of time-based features (sin/cos transformations)
+* Creation of target variable (`aqi_category_next`)
+
+### Training and Test Data
+
+* The dataset is split into:
+
+  * **Training set (80%)**
+  * **Test set (20%)**
+* Stratified sampling is used to preserve class distribution
+* The target variable is the **air quality category for the next time step**
+
+---
+
 ## Data Processing Pipeline
 
 1. Data collection from APIs
