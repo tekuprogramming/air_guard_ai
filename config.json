@@ -1,5 +1,6 @@
 {
     "openweather_api_key": "",
+    "iqair_api_key": "",
     "city": "Prague",
     "country": "CZ"
 }
