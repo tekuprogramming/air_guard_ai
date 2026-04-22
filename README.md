@@ -212,3 +212,9 @@ Project created for learning purposes:
 * Live map visualization
 * Deployment to cloud
 * Real-time alerts system
+
+---
+
+## Model Training Notebook
+
+https://colab.research.google.com/drive/1cRZ_h51JgoN0etRr9SV81PaHnHkJs26B#scrollTo=9RYlECzKVZFO
