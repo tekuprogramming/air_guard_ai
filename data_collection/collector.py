@@ -4,14 +4,23 @@ from datetime import datetime
 import os
 import requests
 import logging
+import json
+from pathlib import Path
+
+config_path = Path(__file__).parent.parent / "config.json"
+
+with open(config_path, "r") as f:
+    config = json.load(f)
+
 logging.basicConfig(level=logging.INFO)
+
 
 class AirCollector:
     def __init__(self, city="Prague", country="CZ"):
         self.city = city
         self.country = country
-        self.own_api_key = os.getenv("OPENWEATHER_API_KEY")
-        self.iqair_api_key = os.getenv("IQAIR_API_KEY")
+        self.own_api_key = config.get("openweather_api_key")
+        self.iqair_api_key = config.get("iqair_api_key")
         if not self.own_api_key or not self.iqair_api_key:
             raise ValueError("Missing API keys in environment variables")
         self.data_file = "historical_data.csv"
@@ -57,9 +66,9 @@ class AirCollector:
                 return {
                     "aqi_us": float(aqi_us) if aqi_us is not None else None
                 }
-                
+
             return {"aqi_us": None, "pm25": None, "pm10": None}
-        
+
         except Exception as e:
             logging.error("IQAir error: %s", e)
             return {"aqi_us": None, "pm25": None, "pm10": None}
@@ -110,7 +119,7 @@ class AirCollector:
             header=not file_exists,
             index=False
         )
-    
+
     def collect_and_save(self):
         timestamp = datetime.now()
 
@@ -153,6 +162,7 @@ class AirCollector:
 
         logging.warning(f"Suspicious AQI value: {aqi}")
         return None
+
 
 if __name__ == "__main__":
     collector = AirCollector()
