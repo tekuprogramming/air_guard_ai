@@ -162,7 +162,7 @@ module_training/visualizations
 
 ---
 
-## 📊 Data Sources and Data Collection
+## Data Sources and Data Collection
 
 ### Data Origin
 
@@ -232,6 +232,15 @@ Before training, the data undergoes several preprocessing steps:
 * Creation of time-based features (sin/cos transformations)
 * Creation of target variable (`aqi_category_next`)
 
+### Feature Scaling
+
+Numerical features are standardized using StandardScaler:
+
+- Mean = 0
+- Standard deviation = 1
+
+This improves model performance and ensures consistent feature ranges.
+
 ### Training and Test Data
 
 * The dataset is split into:
@@ -247,7 +256,7 @@ Before training, the data undergoes several preprocessing steps:
 
 1. Data collection from APIs
 2. Cleaning and filtering invalid values
-3. Handling missing values
+3. Handling missing values (linear interpolation)
 4. Feature engineering (time + weather features)
 5. Label encoding
 6. Model training
@@ -263,6 +272,26 @@ The model is evaluated using:
 * Classification report
 * Confusion matrix
 * Feature importance analysis
+
+---
+
+### Target Variable
+
+The model predicts the air quality category for the **next hour**.
+
+This is created by shifting the original AQI category:
+
+- Current data -> predicts future state
+
+---
+
+## How Training Data Was Created
+
+The training dataset is not static. It is gradually built by continuously collecting real-time data from APIs.
+
+Each new measurement is appended to the dataset, creating a time-series dataset used for model training.
+
+The dataset grows over time, which improves model performance as more data becomes available.
 
 ---
 
