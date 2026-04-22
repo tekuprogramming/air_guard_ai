@@ -1,3 +1,6 @@
+# Main application file for AirGuard
+# Handles data loading, API communication, prediction, and user interaction
+
 from visualizer import AirQualityVisualizer
 import pandas as pd
 import sys
@@ -9,12 +12,10 @@ from predictor import AirQualityPredictor
 import requests
 import numpy as np
 
-# adding import path to project's core folder
 CURRENT_DIR = Path(__file__).parent
 PROJECT_ROOT = CURRENT_DIR.parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
-# a try of collecting data with module import
 try:
     from data_collection.collector import AirCollector
     COLLECTOR_AVAILABLE = True
@@ -22,21 +23,19 @@ except ImportError:
     COLLECTOR_AVAILABLE = False
     print("Data collection module not found. Demo mode will be used")
 
-
 class AirGuardApp:
+    # Main application class handling all logic
     def __init__(self):
         print("\n" + "=" * 60)
         print("AirGuard Application Started")
         print("=" * 60)
 
-        # loading models
         model_path = PROJECT_ROOT / "module_training" / "trained_model_compact.pkl"
         print(model_path)
         print(model_path.exists())
         self.predictor = AirQualityPredictor(str(model_path))
         self.visualizer = AirQualityVisualizer()
 
-        # loading historical data
         self.historical_data = self.load_historical_data()
         self.current_data = None
         self.city = "Prague"
@@ -47,6 +46,7 @@ class AirGuardApp:
         print("=" * 60)
 
     def load_api_key(self):
+        # Load API key from config.json or environment variable
         config_path = PROJECT_ROOT / "config.json"
         if config_path.exists():
             try:
@@ -56,10 +56,10 @@ class AirGuardApp:
             except:
                 pass
 
-        # if file doesn't exist, try environmental variable
         return os.environ.get("OPENWEATHER_API_KEY", "")
 
     def load_historical_data(self):
+        # Load historical data from CSV or create demo data if not available
         data_path = PROJECT_ROOT / "data_collection" / "historical_data.csv"
         if data_path.exists():
             try:
@@ -72,6 +72,7 @@ class AirGuardApp:
         return self.create_demo_data()
 
     def _get_rush_factor(self, dt):
+        # Increase pollution during rush hours on weekdays
         hour = dt.hour
         is_weekend = dt.weekday() >= 5
         if not is_weekend and (7 <= hour <= 9 or 16 <= hour <= 19):
@@ -79,9 +80,11 @@ class AirGuardApp:
         return 1.0
 
     def _get_season_factor(self, dt):
+        # Increase pollution during winter months
         return 1.3 if dt.month in [11, 12, 1, 2] else 1.0
     
     def create_demo_data(self):
+        # Generate synthetic historical data for demo/testing
         dates = [datetime.now() - timedelta(hours=i) for i in range(168, 0, -1)]
         np.random.seed(42)
 
@@ -112,25 +115,26 @@ class AirGuardApp:
                 "aqi_category": self.calculate_aqi_category(base_pm25)
             })
 
-            print(f"Created {len(data)} records of demo data")
-            return pd.DataFrame(data)
+        print(f"Created {len(data)} records of demo data")
+        return pd.DataFrame(data)
 
-    # calculates the category of air quality by PM2.5
     def calculate_aqi_category(self, pm25):
-         if pm25 is None:
-             return "unknown"
-         elif pm25 <= 12:
-             return "good"
-         elif pm25 <= 35:
-             return "moderate"
-         elif pm25 <= 55:
-             return "unhealthy_sensitive"
-         elif pm25 <= 150:
-             return "unhealthy"
-         else:
-             return "hazardous"
+        # Determine AQI category based on PM2.5 value
+        if pm25 is None:
+            return "unknown"
+        elif pm25 <= 12:
+            return "good"
+        elif pm25 <= 35:
+            return "moderate"
+        elif pm25 <= 55:
+            return "unhealthy_sensitive"
+        elif pm25 <= 150:
+            return "unhealthy"
+        else:
+            return "hazardous"
 
     def get_weather(self):
+        # Fetch current weather data from OpenWeather API
         url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city},{self.country}&appid={self.api_key}&units=metric"
         r = requests.get(url, timeout=10)
         if r.status_code != 200:
@@ -138,6 +142,7 @@ class AirGuardApp:
         return r.json()
 
     def get_air_quality(self):
+        # Fetch PM2.5 and PM10 data from OpenAQ API
         url = f"https://api.openaq.org/v2/latest?city={self.city}&parameter=pm25&parameter=pm10"
         r = requests.get(url, timeout=10)
         data = r.json()
@@ -150,10 +155,10 @@ class AirGuardApp:
                 elif m["parameter"] == "pm10":
                     pm10 = m["value"]
 
-         return pm25, pm10
+        return pm25, pm10
     
-    # getting current data from API
     def fetch_current_data(self):
+        # Fetch current data from APIs or fallback to historical data
         if not self.api_key:
             print("API key not found. Using historic data")
             return self.get_last_historical_data()
@@ -194,15 +199,14 @@ class AirGuardApp:
             print(f"Error: {e}")
             return self.get_last_historical_data()
 
-    # getting the last record from historical data
     def get_last_historical_data(self):
+        # Return latest available historical record or default values
         if self.historical_data is not None and len(self.historical_data) > 0:
             last_record = self.historical_data.iloc[-1].to_dict()
             last_record["timestamp"] = datetime.now().isoformat()
             self.current_data = last_record
             print("Using the last historical data")
             return self.current_data
-        # if historical data doesn't exist -> create own data
         else:
             self.current_data = {
                 "timestamp": datetime.now().isoformat(),
@@ -220,12 +224,11 @@ class AirGuardApp:
             }
             return self.current_data
 
-    # creating prediction based on current data
     def make_prediction(self):
+        # Prepare features and get prediction from ML model
         if self.current_data is None:
             self.fetch_current_data()
 
-        # preparing features for the model
         features = {
             "temperature": self.current_data.get("temperature", 0),
             "humidity": self.current_data.get("humidity", 0),
@@ -242,34 +245,33 @@ class AirGuardApp:
             "pm10": self.current_data.get("pm10", 0)
         }
 
-        # getting predictions from the model
         prediction = self.predictor.predict(features)
         return prediction
 
-    # encoding weather type for model
     def encode_weather(self, weather_main):
+        # Encode weather condition into numerical value for model
         try:
             return self.predictor.label_encoder.transform([weather_main])[0]
         except Exception:
             return 0
 
-    # checking if the date is a holiday
     def is_czech_holiday(self, date):
+        # Check if given date is a Czech public holiday
         czech_holidays = [
             "2026-01-01", "2026-04-01", "2026-05-01", "2026-05-08",
             "2026-07-05", "2026-07-06", "2026-09-28", "2026-10-28",
             "2026-12-24", "2026-12-25", "2026-12-26"
         ]
         return 1 if date.strftime("%Y-%m-%d") in czech_holidays else 0
-
-    # checking if the current time is rush hour
+        
     def is_rush_hour(self, dt):
+        # Check if current time is rush hour
         hour = dt.hour
         is_week_day = dt.weekday() < 5
         return 1 if (is_week_day and (7 <= hour <= 9 or 15 <= hour <= 17)) else 0
 
-    # getting recommendation based on air quality category
     def get_recommendation(self, category):
+        # Return recommendation based on air quality category
         recommendations = {
             "good": {
                 "en": "perfect air quality\n"
@@ -300,8 +302,8 @@ class AirGuardApp:
         }
         return recommendations.get(category, recommendations["moderate"])
 
-    # shows main menu
     def show_menu(self):
+        # Display main menu
         print("\n" + "=" * 60)
         print("Main menu")
         print("=" * 60)
@@ -315,9 +317,11 @@ class AirGuardApp:
         print("-" * 60)
 
     def get_header(self, title):
+        # Format section header
         return "\n" + "=" * 60 + f"\n{title}\n" + "=" * 60
 
     def print_current_data(self):
+        # Print current weather and pollution data
         print(f"\nLocation: {self.city}, {self.country}")
         print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
@@ -332,6 +336,7 @@ class AirGuardApp:
         print(f"PM10: {self.current_data.get('pm10', 'N/A')}μg/m³")
 
     def print_prediction(self, prediction):
+        # Print model prediction and probabilities
         print("\nModel prediction:")
         print(f"Category: {prediction['category'].upper()}")
         print(f"Confidence: {prediction['confidence'] * 100:.1f}%")
@@ -346,22 +351,22 @@ class AirGuardApp:
                 bar = "[]" * int(prob * 20)
                 print(f"{cat:20} {bar} {prob*100:.1f}%")
     
-    # shows current prediction
     def show_current_prediction(self):
+        # Display current data, prediction and graph
         print(self.get_header("Current air quality prediction"))
 
         if self.current_data is None:
             self.fetch_current_data()
 
-         prediction = self.make_prediction()
+        prediction = self.make_prediction()
 
-         self.print_current_data()
-         self.print_prediction(prediction)
+        self.print_current_data()
+        self.print_prediction(prediction)
 
-         self.visualizer.plot_current_metrics(self.current_data)
+        self.visualizer.plot_current_metrics(self.current_data)
 
-    # shows 24h trend graph
     def show_trend_chart(self):
+        # Display 24-hour trend chart
         print("\n" + "=" * 60)
         print("24h trend")
         print("=" * 60)
@@ -372,8 +377,8 @@ class AirGuardApp:
         else:
             print("No historical data to make a graph")
 
-    # shows weekly statistics
     def show_weekly_stats(self):
+        # Display weekly statistics
         print("\n" + "=" * 60)
         print("Weekly statistics")
         print("=" * 60)
@@ -385,8 +390,8 @@ class AirGuardApp:
             print("Not enough data for weekly statistics")
             print(f"There are {len(self.historical_data) if self.historical_data is not None else 0} records. 168 needed")
 
-    # shows full dashboard
     def show_dashboard(self):
+        # Display full dashboard with all metrics
         print("\n" + "=" * 60)
         print("Full dashboard")
         print("=" * 60)
@@ -398,14 +403,13 @@ class AirGuardApp:
         else:
             print("No data to make a dashboard")
 
-    # updates current data
     def update_data(self):
+        # Fetch new data and optionally save it using collector
         print("\n" + "=" * 60)
         print("Updating data")
         print("=" * 60)
         self.fetch_current_data()
 
-        # if collector exists, starts collecting
         if COLLECTOR_AVAILABLE:
             try:
                 collector = AirCollector()
@@ -415,8 +419,8 @@ class AirGuardApp:
             except Exception as e:
                 print("Error while collecting data: ", e)
 
-    # application information
     def show_about(self):
+        # Display application info
         print("\n" + "=" * 60)
         print("About the application")
         print("=" * 60)
@@ -429,8 +433,8 @@ class AirGuardApp:
         print("\nAuthor: Milana Poljanskova")
         print("=" * 60)
 
-    # main application cycle
     def run(self):
+        # Main application loop (menu navigation)
         while True:
             self.show_menu()
             action = input("Choose an action from 1 to 7: ").strip()
@@ -452,7 +456,6 @@ class AirGuardApp:
             else:
                 print("Invalid action. Please choose from 1 to 7")
 
-# main application entrance point
 def main():
     try:
         app = AirGuardApp()
