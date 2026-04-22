@@ -16,25 +16,40 @@ logging.basicConfig(level=logging.INFO)
 
 
 class AirCollector:
+    """
+    Class responsible for collecting weather and air quality data
+    from external APIs and saving them into a CSV file.
+    """
+
     def __init__(self, city="Prague", country="CZ"):
         self.city = city
         self.country = country
+
         self.own_api_key = config.get("openweather_api_key")
         self.iqair_api_key = config.get("iqair_api_key")
+
         if not self.own_api_key or not self.iqair_api_key:
             raise ValueError("Missing API keys in environment variables")
+
         self.data_file = "historical_data.csv"
 
     def get_weather_data(self):
+        """
+        Fetch current weather data from OpenWeather API.
+        Returns dictionary with processed weather features.
+        """
         url = f"http://api.openweathermap.org/data/2.5/weather?q={self.city},{self.country}&appid={self.own_api_key}&units=metric"
+
         try:
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             data = response.json()
+
             main = data.get("main", {})
             wind = data.get("wind", {})
             weather = data.get("weather", [{}])
             clouds = data.get("clouds", {})
+
             weather_data = {
                 "temperature": float(main.get("temp", 0)),
                 "humidity": float(main.get("humidity", 0)),
@@ -44,12 +59,18 @@ class AirCollector:
                 "weather_main": str(weather[0].get("main", "unknown")),
                 "clouds": float(clouds.get("all", 0))
             }
+
             return weather_data
+
         except Exception as e:
             print(f"Error getting weather data: {e}")
             return None
 
     def get_air_quality_data(self):
+        """
+        Fetch air quality data from IQAir API.
+        Returns AQI (Air Quality Index).
+        """
         try:
             url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
             response = requests.get(url, timeout=15)
@@ -74,6 +95,9 @@ class AirCollector:
             return {"aqi_us": None, "pm25": None, "pm10": None}
 
     def calculate_aqi_category(self, aqi):
+        """
+        Convert numeric AQI value into categorical label.
+        """
         if aqi is None:
             return "unknown"
         elif aqi <= 50:
@@ -88,9 +112,14 @@ class AirCollector:
             return "hazardous"
 
     def _safe_float(self, value):
+        # Helper: safely convert value to float or return None
         return float(value) if value is not None else None
 
     def _build_record(self, timestamp, weather, aqi):
+        """
+        Build a single structured dataset row for saving.
+        Combines timestamp, weather, and AQI data.
+        """
         return {
             "timestamp": timestamp.isoformat(),
             "date": timestamp.date().isoformat(),
@@ -111,6 +140,9 @@ class AirCollector:
         }
 
     def _save_record(self, df):
+        """
+        Save dataframe to CSV file (append mode if file exists).
+        """
         file_exists = os.path.exists(self.data_file) and os.path.getsize(self.data_file) > 0
 
         df.to_csv(
@@ -121,6 +153,13 @@ class AirCollector:
         )
 
     def collect_and_save(self):
+        """
+        Main pipeline:
+        1. Fetch weather data
+        2. Fetch air quality data
+        3. Validate and combine data
+        4. Save to CSV
+        """
         timestamp = datetime.now()
 
         weather = self.get_weather_data()
@@ -141,6 +180,10 @@ class AirCollector:
         return True
 
     def run_continue(self, interval_minutes=1):
+        """
+        Continuous data collection loop.
+        Runs every X minutes until interrupted.
+        """
         try:
             while True:
                 self.collect_and_save()
@@ -149,12 +192,18 @@ class AirCollector:
             print("Stopped safely")
 
     def validate_aqi(self, aqi):
+        """
+        Validate AQI value:
+        - must be numeric
+        - must be in realistic range (0–500)
+        """
         if aqi is None:
             return None
+
         try:
             aqi = float(aqi)
         except (ValueError, TypeError):
-            logging.warning(f"AQI není číslo: {aqi}")
+            logging.warning(f"AQI is not a number: {aqi}")
             return None
 
         if 0 <= aqi <= 500:
@@ -167,4 +216,3 @@ class AirCollector:
 if __name__ == "__main__":
     collector = AirCollector()
     collector.run_continue(interval_minutes=1)
-
