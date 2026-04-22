@@ -61,26 +61,27 @@ class AirCollector:
             return None
 
     def get_air_quality_data(self):
-        try:
-            url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
-            response = requests.get(url, timeout=15)
-            response.raise_for_status()
-            data = response.json()
+    try:
+        url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
+        response = requests.get(url, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-            if data.get("status") == "success":
-                pollution = data["data"]["current"]["pollution"]
+        if data.get("status") == "success":
+            pollution = data["data"]["current"]["pollution"]
 
-                return {
-                    "aqi_us": pollution.get("aqius"),
-                    "pm25": pollution.get("p2"),   # PM2.5
-                    "pm10": pollution.get("p1")    # PM10
-                }
+            return {
+                "aqi_us": pollution.get("aqius"),
+                "pm25": pollution.get("p2") if "p2" in pollution else pollution.get("pm25"),
+                "pm10": pollution.get("p1") if "p1" in pollution else pollution.get("pm10")
+            }
 
-            return {"aqi_us": None, "pm25": None, "pm10": None}
+        return {"aqi_us": None, "pm25": None, "pm10": None}
 
-        except Exception as e:
-            logging.error(f"IQAir error: {e}")
-            return {"aqi_us": None, "pm25": None, "pm10": None}
+    except Exception as e:
+        logging.error(f"IQAir error: {e}")
+        return {"aqi_us": None, "pm25": None, "pm10": None}
+
 
     def calculate_aqi_category(self, aqi):
         """
