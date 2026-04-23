@@ -40,13 +40,15 @@ if not DATA_PATH.exists():
 
 df = pd.read_csv(DATA_PATH)
 
+df["aqi_category"] = df["pm25"].apply(
+    lambda x: 0 if x <= 12 else
+              1 if x <= 25 else
+              2 if x <= 35 else
+              3 if x <= 50 else
+              4
+)
+
 print(f"Shape: {df.shape}")
-
-if "aqi_category" not in df.columns:
-    print("ERROR: missing aqi_category column")
-    sys.exit(1)
-
-df["aqi_category"] = df["aqi_category"].fillna("unknown")
 
 if df["aqi_category"].nunique() < 2:
     print("WARNING: Only one class in dataset → model cannot learn properly")
@@ -65,19 +67,21 @@ if len(df_clean) < 10:
 df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"])
 df_clean = df_clean.sort_values("timestamp")
 
-df_clean["aqi_category_next"] = df_clean["aqi_category"].shift(-1)
-df_clean = df_clean.dropna(subset=["aqi_category_next"])
-
 le = LabelEncoder()
-df_clean["weather_main_encoded"] = le.fit_transform(
-    df_clean["weather_main"].fillna("Clear")
-)
+if "weather_main" in df_clean.columns:
+    df_clean["weather_main_encoded"] = le.fit_transform(
+        df_clean["weather_main"].fillna("Clear")
+    )
+else:
+    df_clean["weather_main_encoded"] = 0
 
 df_clean["hour_sin"] = np.sin(2 * np.pi * df_clean["hour"] / 24)
 df_clean["hour_cos"] = np.cos(2 * np.pi * df_clean["hour"] / 24)
 
 df_clean["day_sin"] = np.sin(2 * np.pi * df_clean["day_of_week"] / 7)
 df_clean["day_cos"] = np.cos(2 * np.pi * df_clean["day_of_week"] / 7)
+
+df_clean["is_weekend"] = (df_clean["day_of_week"] >= 5).astype(int)
 
 features = [
     "temperature", "humidity", "pressure", "wind_speed",
@@ -91,7 +95,7 @@ features = [
 features = [f for f in features if f in df_clean.columns]
 
 X = df_clean[features]
-y = df_clean["aqi_category_next"]
+y = df_clean["aqi_category"]
 
 print("\nTarget distribution:")
 print(y.value_counts())
@@ -116,8 +120,9 @@ X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 model = RandomForestClassifier(
-    n_estimators=100,
+    n_estimators=200,
     max_depth=10,
+    class_weight="balanced",
     random_state=42
 )
 
