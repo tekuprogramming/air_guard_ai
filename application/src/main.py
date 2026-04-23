@@ -18,10 +18,12 @@ sys.path.append(str(PROJECT_ROOT))
 
 try:
     from data_collection.collector import AirCollector
+
     COLLECTOR_AVAILABLE = True
 except ImportError:
     COLLECTOR_AVAILABLE = False
     print("Data collection module not found. Demo mode will be used")
+
 
 class AirGuardApp:
     # Main application class handling all logic
@@ -30,7 +32,7 @@ class AirGuardApp:
         print("AirGuard Application Started")
         print("=" * 60)
 
-        model_path = PROJECT_ROOT / "module_training" / "trained_model_compact.pkl"
+        model_path = PROJECT_ROOT / "module_training" / "trained_model.pkl"
         print(model_path)
         print(model_path.exists())
         self.predictor = AirQualityPredictor(str(model_path))
@@ -60,7 +62,7 @@ class AirGuardApp:
 
     def load_historical_data(self):
         # Load historical data from CSV or create demo data if not available
-        data_path = PROJECT_ROOT.parent / "data_collection" / 'historical_data.csv'
+        data_path = PROJECT_ROOT / "data_collection" / "historical_data.csv"
         if data_path.exists():
             try:
                 df = pd.read_csv(data_path)
@@ -82,7 +84,7 @@ class AirGuardApp:
     def _get_season_factor(self, dt):
         # Increase pollution during winter months
         return 1.3 if dt.month in [11, 12, 1, 2] else 1.0
-    
+
     def create_demo_data(self):
         # Generate synthetic historical data for demo/testing
         dates = [datetime.now() - timedelta(hours=i) for i in range(168, 0, -1)]
@@ -108,9 +110,6 @@ class AirGuardApp:
                 "pressure": 1013 + 5 * np.random.randn(),
                 "wind_speed": 3 + np.random.exponential(1),
                 "clouds": 50 + 20 * np.random.randn(),
-
-                "pm25": max(0, base_pm25 + np.random.normal(0, 5)),
-                "pm10": max(0, base_pm10 + np.random.normal(0, 8)),
 
                 "aqi_category": self.calculate_aqi_category(base_pm25)
             })
@@ -142,21 +141,22 @@ class AirGuardApp:
         return r.json()
 
     def get_air_quality(self):
-        # Fetch PM2.5 and PM10 data from OpenAQ API
-        url = f"https://api.openaq.org/v2/latest?city={self.city}&parameter=pm25&parameter=pm10"
-        r = requests.get(url, timeout=10)
+        url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+
+        params = {
+            "latitude": 50.0755,
+            "longitude": 14.4378,
+            "hourly": "pm10,pm2_5"
+        }
+
+        r = requests.get(url, params=params, timeout=10)
         data = r.json()
 
-        pm25, pm10 = None, None
-        for result in data.get("results", []):
-            for m in result.get("measurements", []):
-                if m["parameter"] == "pm25":
-                    pm25 = m["value"]
-                elif m["parameter"] == "pm10":
-                    pm10 = m["value"]
+        pm25 = data["hourly"]["pm2_5"][-1]
+        pm10 = data["hourly"]["pm10"][-1]
 
         return pm25, pm10
-    
+
     def fetch_current_data(self):
         # Fetch current data from APIs or fallback to historical data
         if not self.api_key:
@@ -239,7 +239,7 @@ class AirGuardApp:
             "hour_cos": np.cos(2 * np.pi * self.current_data.get("hour", 0) / 24),
             "day_sin": np.sin(2 * np.pi * self.current_data.get("day_of_week", 0) / 7),
             "day_cos": np.cos(2 * np.pi * self.current_data.get("day_of_week", 0) / 7),
-            "weather_main_encoded": self.encode_weather(self.current_data.get("weather_main", "Clear")),
+            "weather_main_encoded": hash(self.current_data.get("weather_main", "Clear")) % 10,
             "is_weekend": self.current_data.get("is_weekend", 0),
             "pm25": self.current_data.get("pm25", 0),
             "pm10": self.current_data.get("pm10", 0)
@@ -263,7 +263,7 @@ class AirGuardApp:
             "2026-12-24", "2026-12-25", "2026-12-26"
         ]
         return 1 if date.strftime("%Y-%m-%d") in czech_holidays else 0
-        
+
     def is_rush_hour(self, dt):
         # Check if current time is rush hour
         hour = dt.hour
@@ -349,8 +349,8 @@ class AirGuardApp:
             print("\nProbability distribution")
             for cat, prob in prediction["probabilities"].items():
                 bar = "[]" * int(prob * 20)
-                print(f"{cat:20} {bar} {prob*100:.1f}%")
-    
+                print(f"{cat:20} {bar} {prob * 100:.1f}%")
+
     def show_current_prediction(self):
         # Display current data, prediction and graph
         print(self.get_header("Current air quality prediction"))
@@ -388,7 +388,8 @@ class AirGuardApp:
             print("Weekly statistics was created")
         else:
             print("Not enough data for weekly statistics")
-            print(f"There are {len(self.historical_data) if self.historical_data is not None else 0} records. 168 needed")
+            print(
+                f"There are {len(self.historical_data) if self.historical_data is not None else 0} records. 168 needed")
 
     def show_dashboard(self):
         # Display full dashboard with all metrics
@@ -456,6 +457,7 @@ class AirGuardApp:
             else:
                 print("Invalid action. Please choose from 1 to 7")
 
+
 def main():
     try:
         app = AirGuardApp()
@@ -467,6 +469,6 @@ def main():
         import traceback
         traceback.print_exc()
 
+
 if __name__ == "__main__":
     main()
-
