@@ -200,4 +200,4 @@ class AirCollector:
 
 if __name__ == "__main__":
     collector = AirCollector()
-    collector.run_continue(interval_seconds=20)
+    collector.run_continue(interval_seconds=60)
