@@ -70,10 +70,13 @@ class AirCollector:
         if data.get("status") == "success":
             pollution = data["data"]["current"]["pollution"]
 
+            pm25 = pollution.get("p2")
+            pm10 = pollution.get("p1")
+
             return {
                 "aqi_us": pollution.get("aqius"),
-                "pm25": pollution.get("p2") if "p2" in pollution else pollution.get("pm25"),
-                "pm10": pollution.get("p1") if "p1" in pollution else pollution.get("pm10")
+                "pm25": pm25 if pm25 is not None else 0,
+                "pm10": pm10 if pm10 is not None else 0
             }
 
         return {"aqi_us": None, "pm25": None, "pm10": None}
