@@ -54,17 +54,18 @@ pip install pandas numpy matplotlib seaborn scikit-learn requests
 
 ## API Setup
 
-This project requires API keys:
+This project uses public APIs:
 
-* OpenWeather API
-* IQAir API
+* OpenWeather API (weather data)
+* Open-Meteo Air Quality API (PM2.5, PM10)
+
+No API key is required for air quality data.
 
 Edit the `config.json` file:
 
 ```json
 {
-  "openweather_api_key": "YOUR_KEY",
-  "iqair_api_key": "YOUR_KEY"
+  "openweather_api_key": "YOUR_KEY"
 }
 ```
 
@@ -169,7 +170,7 @@ module_training/visualizations
 The dataset used for training the air quality prediction model is collected in real time using external public APIs:
 
 * **Weather data** is obtained from the **OpenWeatherMap API**
-* **Air quality data (AQI)** is obtained from the **IQAir API**
+* **Air quality data (PM2.5, PM10) is obtained from the Open-Meteo Air Quality API**
 
 ### Data Collection Process
 
@@ -218,8 +219,9 @@ Each row in the dataset represents one measurement at a specific time and contai
 
 * Air quality:
 
-  * `aqi_us`
-  * `aqi_category`
+  * `pm25`
+  * `pm10`
+  * `aqi_category (derived from PM2.5)`
 
 ### Data Preprocessing
 
