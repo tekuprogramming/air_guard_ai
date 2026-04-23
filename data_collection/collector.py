@@ -61,29 +61,29 @@ class AirCollector:
             return None
 
     def get_air_quality_data(self):
-    try:
-        url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
-        response = requests.get(url, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
+            response = requests.get(url, timeout=15)
+            response.raise_for_status()
+            data = response.json()
 
-        if data.get("status") == "success":
-            pollution = data["data"]["current"]["pollution"]
+            if data.get("status") == "success":
+                pollution = data["data"]["current"]["pollution"]
 
-            pm25 = pollution.get("p2")
-            pm10 = pollution.get("p1")
+                pm25 = pollution.get("p2")
+                pm10 = pollution.get("p1")
 
-            return {
-                "aqi_us": pollution.get("aqius"),
-                "pm25": pm25 if pm25 is not None else 0,
-                "pm10": pm10 if pm10 is not None else 0
-            }
+                return {
+                    "aqi_us": pollution.get("aqius"),
+                    "pm25": pm25 if pm25 is not None else 0,
+                    "pm10": pm10 if pm10 is not None else 0
+                }
 
-        return {"aqi_us": None, "pm25": None, "pm10": None}
+            return {"aqi_us": None, "pm25": None, "pm10": None}
 
-    except Exception as e:
-        logging.error(f"IQAir error: {e}")
-        return {"aqi_us": None, "pm25": None, "pm10": None}
+        except Exception as e:
+            logging.error(f"IQAir error: {e}")
+            return {"aqi_us": None, "pm25": None, "pm10": None}
 
 
     def calculate_aqi_category(self, aqi):
