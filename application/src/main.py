@@ -60,7 +60,7 @@ class AirGuardApp:
 
     def load_historical_data(self):
         # Load historical data from CSV or create demo data if not available
-        data_path = PROJECT_ROOT / "data_collection" / "historical_data.csv"
+        data_path = PROJECT_ROOT.parent / "data_collection" / 'historical_data.csv'
         if data_path.exists():
             try:
                 df = pd.read_csv(data_path)
