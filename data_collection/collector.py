@@ -26,11 +26,9 @@ class AirCollector:
         self.country = country
 
         self.own_api_key = config.get("openweather_api_key")
-        self.iqair_api_key = config.get("iqair_api_key")
+        if not self.own_api_key:
+            raise ValueError("Missing OpenWeather API key in config.json")
 
-        if not self.own_api_key or not self.iqair_api_key:
-            raise ValueError("Missing API keys in config.json")
-            
         self.data_file = "historical_data.csv"
 
     def get_weather_data(self):
@@ -62,43 +60,41 @@ class AirCollector:
 
     def get_air_quality_data(self):
         try:
-            url = f"https://api.airvisual.com/v2/nearest_city?key={self.iqair_api_key}"
-            response = requests.get(url, timeout=15)
+            url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+
+            params = {
+                "latitude": 50.0755,
+                "longitude": 14.4378,
+                "hourly": "pm10,pm2_5"
+            }
+
+            response = requests.get(url, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
 
-            if data.get("status") == "success":
-                pollution = data["data"]["current"]["pollution"]
+            pm25 = data["hourly"]["pm2_5"][-1]
+            pm10 = data["hourly"]["pm10"][-1]
 
-                pm25 = pollution.get("p2")
-                pm10 = pollution.get("p1")
-
-                return {
-                    "aqi_us": pollution.get("aqius"),
-                    "pm25": pm25 if pm25 is not None else 0,
-                    "pm10": pm10 if pm10 is not None else 0
-                }
-
-            return {"aqi_us": None, "pm25": None, "pm10": None}
+            return {
+                "aqi_us": None,
+                "pm25": pm25,
+                "pm10": pm10
+            }
 
         except Exception as e:
-            logging.error(f"IQAir error: {e}")
+            logging.error(f"Open-Meteo AQ error: {e}")
             return {"aqi_us": None, "pm25": None, "pm10": None}
 
-
-    def calculate_aqi_category(self, aqi):
-        """
-        Convert numeric AQI value into categorical label.
-        """
-        if aqi is None:
+    def calculate_aqi_category(self, pm25):
+        if pm25 is None:
             return "unknown"
-        elif aqi <= 50:
+        elif pm25 <= 12:
             return "good"
-        elif aqi <= 100:
+        elif pm25 <= 35:
             return "moderate"
-        elif aqi <= 150:
+        elif pm25 <= 55:
             return "unhealthy_sensitive"
-        elif aqi <= 200:
+        elif pm25 <= 150:
             return "unhealthy"
         else:
             return "hazardous"
@@ -132,7 +128,7 @@ class AirCollector:
             "pm25": self._safe_float(air["pm25"]),
             "pm10": self._safe_float(air["pm10"]),
 
-            "aqi_category": self.calculate_aqi_category(air["aqi_us"])
+            "aqi_category": self.calculate_aqi_category(air["pm25"])
         }
 
     def _save_record(self, df):
@@ -200,4 +196,4 @@ class AirCollector:
 
 if __name__ == "__main__":
     collector = AirCollector()
-    collector.run_continue(interval_seconds=60)
+    collector.run_continue(interval_seconds=20)
