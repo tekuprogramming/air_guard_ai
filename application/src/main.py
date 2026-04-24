@@ -152,8 +152,19 @@ class AirGuardApp:
         r = requests.get(url, params=params, timeout=10)
         data = r.json()
 
-        pm25 = data["hourly"]["pm2_5"][-1]
-        pm10 = data["hourly"]["pm10"][-1]
+        times = data["hourly"]["time"]
+        pm25_list = data["hourly"]["pm2_5"]
+        pm10_list = data["hourly"]["pm10"]
+
+        now = datetime.utcnow().replace(minute=0, second=0, microsecond=0).isoformat()
+
+        if now in times:
+            idx = times.index(now)
+            pm25 = pm25_list[idx]
+            pm10 = pm10_list[idx]
+        else:
+            pm25 = next((x for x in reversed(pm25_list) if x is not None), 0)
+            pm10 = next((x for x in reversed(pm10_list) if x is not None), 0)
 
         return pm25, pm10
 
